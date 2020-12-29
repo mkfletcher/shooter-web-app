@@ -5,6 +5,7 @@
                 <transition name="slide-fade" mode="out-in">
                     <router-view id="main-router-view"></router-view>
                 </transition>
+                <full-screen-loader></full-screen-loader>
             </div>
 	    </div>
     </div>

@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 import LoginPage from '../views/LoginPage.vue'
 import DashboardPage from '../views/DashboardPage.vue'
 import DashboardPageLobbies from '../views/DashboardPageLobbies.vue'
+import DashboardPageLobbiesCreate from '../views/DashboardPageLobbiesCreate.vue'
 import DashboardPageAccount from '../views/DashboardPageAccount.vue'
 import GamePage from '../views/GamePage.vue'
 
@@ -43,6 +44,14 @@ const router = new VueRouter({
                     path: 'lobbies',
                     component: DashboardPageLobbies,
 					name: 'Lobbies',
+					meta: {
+						requiresAuth: true,
+					}
+                },
+                {
+                    path: 'lobbies/create',
+                    component: DashboardPageLobbiesCreate,
+					name: 'Create Lobby',
 					meta: {
 						requiresAuth: true,
 					}

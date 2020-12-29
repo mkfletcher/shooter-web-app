@@ -69,7 +69,6 @@
 		 */
 		data: function () {
 			return {
-				showOverlay: false,
                 invalidCredentialsMessage: "",
                 invalidRegisterMessage: "",
 				loginForm: {
@@ -130,6 +129,9 @@
 			 */
 			async loginFormHandler () {
 
+                // Show loader
+                this.$store.commit('showLoader', "Signing in...");
+
 				// Check if form is valid and if not
 				// then return out of function
 				this.$v.loginForm.$touch();
@@ -145,6 +147,7 @@
 					data: { userDisplayName: this.loginForm.userDisplayName, userPassword: this.loginForm.userPassword }
 				}).then((res) => {
                     window.localStorage.setItem('JWT', res.json.data.token);
+                    window.localStorage.setItem('userId', res.json.data.user._id);
 					this.$router.push('/dashboard/');
 				}).catch((res) => {
 					if (res.statusCode === 400) {
@@ -152,12 +155,15 @@
 					}
 					console.log(res);
 				}).finally(() => {
-					this.showOverlay = false;
+                    this.$store.commit('hideLoader');
 				});
 
             },
             
             async registerFormHandler () {
+
+                // Show loader
+                this.$store.commit('showLoader', "Registering...");
 
 				// Check if form is valid and if not
 				// then return out of function
@@ -184,7 +190,7 @@
 					}
 					console.log(res);
 				}).finally(() => {
-					this.showOverlay = false;
+                    this.$store.commit('hideLoader');
                 });
                 
             }
@@ -214,6 +220,7 @@
             background-repeat: no-repeat;
             background-size: cover;
             opacity: 0.4;
+            z-index: 1;
         }
     }
 
@@ -226,6 +233,7 @@
 		overflow: hidden;
 		box-shadow: $shadow-card-2;
         transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+        z-index: 2;
 
         .nav-tabs {
             border-bottom: 0px solid transparent;

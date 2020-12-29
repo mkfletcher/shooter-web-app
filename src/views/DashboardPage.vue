@@ -135,7 +135,9 @@
 		box-shadow: $shadow-card-2;
         transition: all 0.3s cubic-bezier(.25,.8,.25,1);
         z-index: 2;
-
+        font-size: 13px;
+        text-align: left;
+        
         .dashboard-page-side-panel {
             position: relative;
             float: left;
