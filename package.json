@@ -3,16 +3,26 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
+    "serve": "vue-cli-service serve --mode development --port 3001",
+    "build": "vue-cli-service build --mode production",
     "test:unit": "vue-cli-service test:unit",
-    "test:e2e": "vue-cli-service test:e2e",
+    "test:e2e": "vue-cli-service test:e2e --headless",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "axios": "^0.21.0",
+    "base64-arraybuffer": "^0.2.0",
+    "bootstrap": "^4.5.3",
+    "bootstrap-vue": "^2.19.0",
     "core-js": "^3.6.5",
-    "vue": "^2.6.11",
+    "mainloop.js": "^1.0.4",
+    "pixi-viewport": "^4.17.1",
+    "pixi.js": "^5.3.3",
+    "random-name": "^0.1.2",
+    "socket.io-client": "^3.0.3",
+    "vue": "^2.6.12",
     "vue-router": "^3.2.0",
+    "vuelidate": "^0.7.6",
     "vuex": "^3.4.0"
   },
   "devDependencies": {
