@@ -24,6 +24,18 @@
                 </div>
                 <div class="row">
                     <div class="col-6">
+                        <b-form-group label="Start Date" description="The game will start on this date. You must select a date in the future.">
+                            <b-form-datepicker v-model="$v.createGameForm.gameStartDate.$model" :min="minDate" :state="validateFormFieldState('createGameForm', 'gameStartDate')" :date-format-options="{ year: 'numeric', month: 'numeric', day: 'numeric' }"></b-form-datepicker>
+                        </b-form-group>
+                    </div>
+                    <div class="col-6">
+                      <b-form-group label="Start Time" description="The game will start at this time. You must select a time in the future.">
+                            <b-form-timepicker v-model="$v.createGameForm.gameStartTime.$model" :min="minDate" :state="validateFormFieldState('createGameForm', 'gameStartTime')"></b-form-timepicker>
+                        </b-form-group>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6">
                         <b-form-group label="Time Limit (minutes)" description="This lobby will close when the time limit has been reached">
                             <b-form-spinbutton min="5" max="60" v-model="$v.createGameForm.gameTimeLimit.$model" :state="validateFormFieldState('createGameForm', 'gameTimeLimit')"></b-form-spinbutton>
                         </b-form-group>
@@ -32,16 +44,6 @@
                         <b-form-group label="Max Players" description="Select the maximum amount of players that can join this lobby">
                             <b-form-spinbutton min="2" max="20" v-model="$v.createGameForm.gameMaxPlayers.$model" :state="validateFormFieldState('createGameForm', 'gameMaxPlayers')"></b-form-spinbutton>
                         </b-form-group>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-6">
-                        <b-form-group label="Start Countdown" description="The game will begin in the selected amount of minutes">
-                            <b-form-spinbutton min="1" max="60" v-model="$v.createGameForm.gameStartCountdown.$model" :state="validateFormFieldState('createGameForm', 'gameStartCountdown')"></b-form-spinbutton>
-                        </b-form-group>
-                    </div>
-                    <div class="col-6">
-                      
                     </div>
                 </div>
                 <b-button class="mt-4" block variant="primary" type="submit">Create Lobby</b-button>
@@ -59,6 +61,7 @@
 	import { request, cancelToken } from './../helpers/request';
 	import { validationMixin } from "vuelidate";
     import { required, minLength, sameAs } from "vuelidate/lib/validators";
+    import moment from "moment";
 
     
 	/**
@@ -84,13 +87,16 @@
                 requestGameModesLoading: false,
                 gameMaps: [],
                 gameModes: [],
-
+                minDate: moment().format('YYYY-MM-DD'),
+                minTime: moment().format('hh:mm:ss'),
                 createGameForm: {
 					gameMap: null,
 					gameMode: null,
 					gameMaxPlayers: 12,
 					gameTimeLimit: 10,
-					gameStartCountdown: 1
+					gameStartCountdown: 1,
+					gameStartDate: null,
+					gameStartTime: null
                 },            
             };
         },
@@ -114,6 +120,15 @@
                 },
                 gameStartCountdown: {
 					required,
+                },
+                gameStartDate: {
+					required,
+                },
+                gameStartTime: {
+                    required,
+                    minDate (value) {
+                        return !(value < moment().format('hh:mm:ss'));
+                    }
                 },
             },
         },
@@ -144,6 +159,9 @@
 					return;
                 }
 
+                // Convert date time to utc
+                var utcDate = new moment(this.createGameForm.gameStartDate + "T" + this.createGameForm.gameStartTime, "YYYY-MM-DDTHH:mm").utc();
+
                 // Show loader
                 this.$store.commit('showLoader', "Creating Lobby...");
                 
@@ -156,7 +174,7 @@
                         gameMode: this.createGameForm.gameMode ,
                         gameMaxPlayers: this.createGameForm.gameMaxPlayers,
                         gameTimeLimit: this.createGameForm.gameTimeLimit * 60,
-                        gameStartCountdown: this.createGameForm.gameStartCountdown * 60,
+                        gameStartDatetime: utcDate.format(),
                     }
 				}).then((res) => {
                     console.log(res);
@@ -177,6 +195,12 @@
          * On mounted hook  
          */
         mounted: async function () {
+
+            // Set default date and time
+            console.log(this.minTime);
+            this.createGameForm.gameStartDate = this.minDate;
+            this.createGameForm.gameStartTime = this.minTime;
+
 
             // Is now loading data
             this.$store.commit('showLoader', "Loading...");

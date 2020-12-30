@@ -4,10 +4,12 @@ import App from './App.vue'
 import router from './router'
 import store from './store'
 import FullScreenLoader from './components/FullScreenLoader.vue';
+import LobbyCard from './components/LobbyCard.vue';
 
 Vue.config.productionTip = false
 
 Vue.component('full-screen-loader', FullScreenLoader);
+Vue.component('lobby-card', LobbyCard);
 
 new Vue({
   router,

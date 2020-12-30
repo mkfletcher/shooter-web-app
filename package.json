@@ -16,6 +16,7 @@
     "bootstrap-vue": "^2.19.0",
     "core-js": "^3.6.5",
     "mainloop.js": "^1.0.4",
+    "moment": "^2.29.1",
     "pixi-viewport": "^4.17.1",
     "pixi.js": "^5.3.3",
     "random-name": "^0.1.2",

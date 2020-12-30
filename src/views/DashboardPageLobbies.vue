@@ -13,7 +13,8 @@
         <div class="lobbies-list">
             <div class="lobbies-list-group-title" v-b-toggle.collapse-1>My Lobbies <i class="fas fa-chevron-down"></i></div>
             <b-collapse id="collapse-1" class="mt-2" visible>
-                <div class="lobby-card" v-for="item in userLobbies" v-bind:key="item._id">
+                <lobby-card v-for="item in userLobbies" v-bind:key="item._id" :lobby="item"></lobby-card>
+                <!--<div class="lobby-card" v-for="item in userLobbies" v-bind:key="item._id">
                     <div class="img" :style="`background-image:url(${item.gameMap.mapTexturePath})`"></div>
                     <div class="content">
                         <h5 class="weight-600 mt-2 mb-1">{{ item.gameMap.mapTitle }}</h5>
@@ -22,7 +23,7 @@
                     <div class="actions text-right">
                         <b-button variant="outline-danger mt-2" :to="`/dashboard/game/${item._id}`">JOIN</b-button>
                     </div>
-                </div>
+                </div>-->
             </b-collapse>
             <div class="lobbies-list-group-title" v-b-toggle.collapse-2>Other Lobbies <i class="fas fa-chevron-down"></i></div>
                 <b-collapse id="collapse-2" class="mt-2">
@@ -125,45 +126,7 @@
                 }
             }
 
-            .lobby-card {
-                position: relative;
-                display: block;
-                width: 100%;
-                height: auto;
-                padding: 6px;
-                background-color: #FFF;
-                text-align: left;
-                border-radius: 5px;
-                font-size: 0;
-                margin-bottom: 12px;
-
-                .img {
-                    position: relative;
-                    display: inline-block;
-                    vertical-align: top;
-                    width: 60px;
-                    height: 60px;
-                    background-repeat: no-repeat;
-                    background-size: cover;
-                    background-position: center;
-                    border-radius: 5px;
-                }
-
-                .content {
-                    position: relative;
-                    display: inline-block;
-                    vertical-align: top;
-                    width: calc(100% - 60px - 120px);
-                    padding: 0 6px;
-                }
-
-                .actions {
-                    position: relative;
-                    display: inline-block;
-                    vertical-align: top;
-                    width: 120px;
-                }
-            }
+            
         }
     }
 
