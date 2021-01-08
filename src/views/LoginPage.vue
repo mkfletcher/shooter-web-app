@@ -129,8 +129,6 @@
 			 */
 			async loginFormHandler () {
 
-                // Show loader
-                this.$store.commit('showLoader', "Signing in...");
 
 				// Check if form is valid and if not
 				// then return out of function
@@ -139,6 +137,9 @@
 					this.invalidCredentialsMessage = "";
 					return;
 				}
+
+                // Show loader
+                this.$store.commit('showLoader', "Signing in...");
 
 				// Form was validated, so check with server
 			    request({
@@ -162,8 +163,6 @@
             
             async registerFormHandler () {
 
-                // Show loader
-                this.$store.commit('showLoader', "Registering...");
 
 				// Check if form is valid and if not
 				// then return out of function
@@ -172,6 +171,9 @@
 					this.invalidRegisterMessage = "";
 					return;
                 }
+                
+                // Show loader
+                this.$store.commit('showLoader', "Registering...");
                 
                 // Hide message
                 this.invalidRegisterMessage = "";
