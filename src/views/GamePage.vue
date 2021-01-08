@@ -27,7 +27,6 @@ import * as PIXI from 'pixi.js';
 import GameLoop from 'mainloop.js';
 import Impetus from '../helpers/impetus';
 import io from 'socket.io-client';
-import randomName from 'random-name';
 import moment from 'moment';
 
 export default {
