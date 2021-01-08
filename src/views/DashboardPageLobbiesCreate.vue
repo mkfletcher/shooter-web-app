@@ -37,7 +37,7 @@
                 <div class="row">
                     <div class="col-6">
                         <b-form-group label="Time Limit (minutes)" description="This lobby will close when the time limit has been reached">
-                            <b-form-spinbutton min="5" max="60" v-model="$v.createGameForm.gameTimeLimit.$model" :state="validateFormFieldState('createGameForm', 'gameTimeLimit')"></b-form-spinbutton>
+                            <b-form-spinbutton min="1" max="60" v-model="$v.createGameForm.gameTimeLimit.$model" :state="validateFormFieldState('createGameForm', 'gameTimeLimit')"></b-form-spinbutton>
                         </b-form-group>
                     </div>
                     <div class="col-6">
@@ -88,7 +88,7 @@
                 gameMaps: [],
                 gameModes: [],
                 minDate: moment().format('YYYY-MM-DD'),
-                minTime: moment().format('hh:mm:ss'),
+                minTime: moment().format('HH:mm:ss'),
                 createGameForm: {
 					gameMap: null,
 					gameMode: null,
@@ -127,7 +127,7 @@
                 gameStartTime: {
                     required,
                     minDate (value) {
-                        return !(value < moment().format('hh:mm:ss'));
+                        return !(value < moment().format('HH:mm:ss'));
                     }
                 },
             },
@@ -197,10 +197,8 @@
         mounted: async function () {
 
             // Set default date and time
-            console.log(this.minTime);
             this.createGameForm.gameStartDate = this.minDate;
             this.createGameForm.gameStartTime = this.minTime;
-
 
             // Is now loading data
             this.$store.commit('showLoader', "Loading...");

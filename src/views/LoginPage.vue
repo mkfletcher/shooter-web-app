@@ -183,6 +183,7 @@
 					data: { userDisplayName: this.registerForm.userDisplayName, userPassword: this.registerForm.userPassword }
 				}).then((res) => {
                     window.localStorage.setItem('JWT', res.json.data.token);
+                    window.localStorage.setItem('userId', res.json.data.user._id);
 					this.$router.push('/dashboard/');
 				}).catch((res) => {
 					if (res.statusCode === 400) {

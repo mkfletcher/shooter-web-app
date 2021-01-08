@@ -3,7 +3,7 @@ import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
-import FullScreenLoader from './components/FullScreenLoader.vue';
+import FullScreenLoader from './components/FullscreenLoader.vue';
 import LobbyCard from './components/LobbyCard.vue';
 
 Vue.config.productionTip = false

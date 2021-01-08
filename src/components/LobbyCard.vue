@@ -30,7 +30,6 @@
         },
         data: function () {
             return {
-                lobbyStartTime: null,
                 intervalTimer: null,
             };
         },
@@ -40,15 +39,31 @@
             }
         },
         mounted: function () {
-            if (moment().isAfter(this.lobby.gameStartDatetime)) {
-                this.intervalTimer = setInterval(() => {
-                    this.updateTimeAgo("Open for: " + moment(this.lobby.gameStartDatetime).fromNow(true));
-                }, 1000);
-            } else {
-                this.intervalTimer = setInterval(() => {
-                    this.updateTimeAgo("Opens in: " + moment(this.lobby.gameStartDatetime).fromNow(true));
-                }, 1000);
-            }
+
+            // Set a one minute timer
+            this.intervalTimer = setInterval(() => {
+
+                // If lobby has started
+                if (moment().isAfter(this.lobby.gameStartDatetime)) {
+
+                    // If lobby has finished
+                    if (moment().isAfter(this.lobby.gameEndDatetime)) {
+                        this.$emit("expired", this.lobby._id);
+                        this.updateTimeAgo("EXPIRED");
+                        clearInterval(this.intervalTimer);
+                    } else {
+                        this.updateTimeAgo("Time remaining: " + moment(this.lobby.gameEndDatetime).fromNow(true));
+                    }
+
+                } 
+                
+                // Lobby hasn't started yet
+                else {
+                    this.updateTimeAgo("Game starts in: " + moment(this.lobby.gameStartDatetime).fromNow(true));
+                }
+
+            });
+
         },
         beforeDestroy() {
             clearInterval(this.intervalTimer);

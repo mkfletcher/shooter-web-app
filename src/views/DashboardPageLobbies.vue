@@ -13,72 +13,158 @@
         <div class="lobbies-list">
             <div class="lobbies-list-group-title" v-b-toggle.collapse-1>My Lobbies <i class="fas fa-chevron-down"></i></div>
             <b-collapse id="collapse-1" class="mt-2" visible>
-                <lobby-card v-for="item in userLobbies" v-bind:key="item._id" :lobby="item"></lobby-card>
-                <!--<div class="lobby-card" v-for="item in userLobbies" v-bind:key="item._id">
-                    <div class="img" :style="`background-image:url(${item.gameMap.mapTexturePath})`"></div>
-                    <div class="content">
-                        <h5 class="weight-600 mt-2 mb-1">{{ item.gameMap.mapTitle }}</h5>
-                        <h6 class="weight-400 m-0">{{ item.gameMode.gameModeTitle }} · 0 / {{ item.gameMaxPlayers }} Players</h6>
-                    </div>
-                    <div class="actions text-right">
-                        <b-button variant="outline-danger mt-2" :to="`/dashboard/game/${item._id}`">JOIN</b-button>
-                    </div>
-                </div>-->
+                <lobby-card v-for="item in userLobbies" v-bind:key="item._id" :lobby="item" v-on:expired="expireLobby"></lobby-card>
             </b-collapse>
             <div class="lobbies-list-group-title" v-b-toggle.collapse-2>Other Lobbies <i class="fas fa-chevron-down"></i></div>
-                <b-collapse id="collapse-2" class="mt-2">
-                    <div class="lobby-card" v-for="item in otherLobbies" v-bind:key="item._id">
-                        <div class="img" :style="`background-image:url(${item.gameMap.mapTexturePath})`"></div>
-                        <div class="content">
-                            <h5 class="weight-600 mt-2 mb-1">{{ item.gameMap.mapTitle }}</h5>
-                            <h6 class="weight-400 m-0">{{ item.gameMode.gameModeTitle }} · 0 / {{ item.gameMaxPlayers }} Players</h6>
-                        </div>
-                        <div class="actions text-right">
-                            <b-button variant="outline-danger mt-2" :to="`/dashboard/game/${item._id}`">JOIN</b-button>
-                        </div>
-                    </div>
-                </b-collapse>
+            <b-collapse id="collapse-2" class="mt-2" visible>
+                <lobby-card v-for="item in otherLobbies" v-bind:key="item._id" :lobby="item" v-on:expired="expireLobby"></lobby-card>
+            </b-collapse>
+            
         </div>
     </div>
 </template>
 <script>
 	import { request, cancelToken } from './../helpers/request';
+    import io from 'socket.io-client';
 
     export default {
         data: function () {
             return {
                 userLobbies: [],
                 otherLobbies: [],
-                requestLobbiesCancelToken: cancelToken()
+                requestLobbiesCancelToken: cancelToken(),
+                socket: null,
             };
         },
         mounted: async function () {
 
-            // Is now loading lobbies
+            // Show loader
             this.$store.commit('showLoader', "Loading lobbies...");
-
-            // Get maps
-            setTimeout(() => {
-                request({
-                    method: 'get',
-                    url: 'games',
-                    cancelToken: this.requestLobbiesCancelToken.token
-                }).then((res) => {
-                    this.userLobbies = res.json.data.filter((lobby) => {
-                        return lobby.gameUser == window.localStorage.getItem('userId');
-                    });
-                    this.otherLobbies = res.json.data.filter((lobby) => {
-                        return lobby.gameUser != window.localStorage.getItem('userId');
-                    });
-                }).catch((err) => {
-                    console.log(err);
-                }).finally(() => {
-                    this.$store.commit('hideLoader');
+            
+            // get initial lobby list
+            request({
+                method: 'get',
+                url: 'games',
+                cancelToken: this.requestLobbiesCancelToken.token
+            }).then((res) => {
+                this.userLobbies = res.json.data.filter((lobby) => {
+                    return lobby.gameUser == window.localStorage.getItem('userId');
                 });
-            }, 500);
+                this.otherLobbies = res.json.data.filter((lobby) => {
+                    return lobby.gameUser != window.localStorage.getItem('userId');
+                });
+            }).catch((err) => {
+                console.log(err);
+            }).finally(() => {
+                this.$store.commit('hideLoader');
+            });
+
+            // Create a new socket to connect to lobbies
+            this.socket = io.connect(process.env.VUE_APP_API_BASE_URL + 'lobbies', {
+                forceNew: true,
+                query: {
+                    jwt: window.localStorage.getItem('JWT'),
+                }
+            });
+
+            // User is successfully connected
+            this.socket.on('connect', () => {
+                //console.log('successfull handshake');
+            });
+            
+            // On connection error, probably unauthorized
+            this.socket.on('connect_error', (err) => {
+                if (err.message == "Invalid token") {
+                    alert('Sorry, you are unauthoized. Please log in.');
+                    window.localStorage.removeItem('JWT');
+                    window.localStorage.removeItem('userId');
+                    this.$router.push('/');
+                }
+            });
+
+            // On lobby created
+            /*this.socket.on('created', (lobby) => {
+                if (lobby.gameUser == window.localStorage.getItem('userId')) {
+                    this.userLobbies.push(lobby);
+                    this.userLobbies.sort((a, b) => {
+                        return a.gameStartDatetime < b.gameStartDatetime ? -1 : 1;
+                    });
+                } else {
+                    this.otherLobbies.push(lobby);
+                    this.otherLobbies.sort((a, b) => {
+                        return a.gameStartDatetime < b.gameStartDatetime ? -1 : 1;
+                    });
+                }
+            });*/ 
+
+            //this.socket.on('error', (err) => {
+            //    console.log(err);
+                //alert('Sorry, you are unauthoized. Please log in.');
+                //window.localStorage.removeItem('JWT');
+                //window.localStorage.removeItem('userId');
+                //this.$router.push('/');
+           // })
+
+            
+
+            // On connection callback
+            /*this.socket.on('connect', () => {
+                    
+                this.socket.on('created', (lobby) => {
+                    if (lobby.gameUser == window.localStorage.getItem('userId')) {
+                        this.userLobbies.push(lobby);
+                        this.userLobbies.sort((a, b) => {
+                            return a.gameStartDatetime < b.gameStartDatetime ? -1 : 1;
+                        });
+                    } else {
+                        this.otherLobbies.push(lobby);
+                        this.otherLobbies.sort((a, b) => {
+                            return a.gameStartDatetime < b.gameStartDatetime ? -1 : 1;
+                        });
+                    }
+                });
+
+                this.socket.on('deleted', (lobbyId) => {
+                    this.userLobbies = this.userLobbies.filter((lobby) => {
+                        return lobbyId == lobby._id ? false : true;
+                    });
+                    this.otherLobbies = this.otherLobbies.filter((lobby) => {
+                        return lobbyId == lobby._id ? false : true;
+                    });
+                });
+
+
+            });*/
+
+
+
+                // Get maps
+                /*setTimeout(() => {
+                    request({
+                        method: 'get',
+                        url: 'games',
+                        cancelToken: this.requestLobbiesCancelToken.token
+                    }).then((res) => {
+                        this.userLobbies = res.json.data.filter((lobby) => {
+                            return lobby.gameUser == window.localStorage.getItem('userId');
+                        });
+                        this.otherLobbies = res.json.data.filter((lobby) => {
+                            return lobby.gameUser != window.localStorage.getItem('userId');
+                        });
+                    }).catch((err) => {
+                        console.log(err);
+                    }).finally(() => {
+                        this.$store.commit('hideLoader');
+                    });
+                }, 1000);*/
 
         },
 
+        beforeDestroy() {
+            if (this.socket != null) {
+                this.socket.disconnect();
+            }
+        },
         destroyed: function () {
             this.requestLobbiesCancelToken.cancel('Request Cancelled');
         },
@@ -86,7 +172,14 @@
            
         },
         methods: {
-            
+            expireLobby (lobbyId) {
+                this.userLobbies = this.userLobbies.filter((lobby) => {
+                    return lobbyId == lobby._id ? false : true;
+                });
+                this.otherLobbies = this.otherLobbies.filter((lobby) => {
+                    return lobbyId == lobby._id ? false : true;
+                });
+            }
         }
     }
 </script>

@@ -22,11 +22,13 @@
 
 <script>
 
+import { request, cancelToken } from './../helpers/request';
 import * as PIXI from 'pixi.js';
 import GameLoop from 'mainloop.js';
 import Impetus from '../helpers/impetus';
 import io from 'socket.io-client';
 import randomName from 'random-name';
+import moment from 'moment';
 
 export default {
     
@@ -35,6 +37,8 @@ export default {
      */
     data: function () {
         return {
+            requestLobbyCancelToken: cancelToken(),
+            lobby: null,
             impetus: null,
             game: null,
             gameSize: { w: 720, h: 576 },
@@ -55,6 +59,15 @@ export default {
     },
 
     /**
+     * Called before the component is destroyed
+     */
+    beforeDestroy: function () {
+        if (this.socket != null) {
+            this.socket.disconnect();
+        }
+    },
+
+    /**
      * When the element is destroyed, remove the
      * window resize event listener.
      */
@@ -67,46 +80,340 @@ export default {
      */
     mounted: function () {
 
+        // Show loader
+        this.$store.commit('showLoader', "Joining lobby...");
+
+        // Make sure game lobby still exists
+        request({
+            method: 'get',
+            url: 'games/' + this.$route.params.id,
+            cancelToken: this.requestLobbyCancelToken.token
+        }).then((res) => {
+
+            // Set lobby data
+            this.lobby = res.json.data;
+
+            // If lobby has finished, kick user out
+            if (moment().isAfter(res.json.data.gameEndDatetime)) {
+                alert('Sorry, this lobby no longer exists. We will redirect you to the dashboard.');
+                this.$store.commit('hideLoader');
+                this.$router.push('/dashboard/lobbies');
+            }
+
+            // The lobby does exist, now load pixi.js and assets
+            this.$store.commit('showLoader', "Loading assets...");
+            
+            // Create game
+            this.game = new PIXI.Application({
+                width: this.gameSize.w, 
+                height: this.gameSize.h,
+                antialias: true,  
+                transparent: false, 
+                resolution: 1 
+            });
+
+            // Renderer options
+            this.game.renderer.backgroundColor = 0x000000;
+            this.game.renderer.autoResize = false;
+            this.game.renderer.resize(this.gameSize.w, this.gameSize.h);
+
+            // Add view to screen
+            this.$refs.gameCanvas.append(this.game.view);
+            this.$refs.gameCanvas.focus();
 
 
-
-        // Create game
-        this.game = new PIXI.Application({
-            width: this.gameSize.w, 
-            height: this.gameSize.h,
-            antialias: true,  
-            transparent: false, 
-            resolution: 1 
-        });
-
-        // Renderer options
-        this.game.renderer.backgroundColor = 0x000000;
-        this.game.renderer.autoResize = false;
-        this.game.renderer.resize(this.gameSize.w, this.gameSize.h);
-
-        // Add view to screen
-        this.$refs.gameCanvas.append(this.game.view);
-        this.$refs.gameCanvas.focus();
+            // Set canvas height to fit 16:9 aspect ratio
+            this.resizeHandler();
 
 
-        // Set canvas height to fit 16:9 aspect ratio
-        this.resizeHandler();
-
-        // Load assets
-        this.game.loader.reset()
-        .add('image', require('../assets/pathNS.png'))
-        .add('soldier', require('../assets/enemySoldier.png'))
-        .add('map', require('../assets/map.png'))
-        .load(this.afterSetup);
-    },
-
-
-
-    methods: {
-
-        afterSetup: function () {
+            // Load assets
+            console.log(this.lobby.gameMap.mapTexturePath)
+            this.game.loader.reset()
+            .add('soldier', require('../assets/enemySoldier.png'))
+            .add('map', this.lobby.gameMap.mapTexturePath)
+            .load(this.onAssetsReady);
 
             
+        }).catch((err) => {
+            alert('Sorry, this lobby no longer exists. We will redirect you to the dashboard');
+            this.$store.commit('hideLoader');
+            this.$router.push('/dashboard/lobbies');
+            console.log(err);
+        });
+        
+    },
+
+    
+
+    /**
+     * Methods
+     */
+    methods: {
+
+        onAssetsReady: function () {
+
+            var player = {};
+            var opponentPlayers = [];
+            var userId = window.localStorage.getItem('JWT');
+
+            // Connect using web sockets
+            this.socket = io.connect(process.env.VUE_APP_API_BASE_URL, {
+                forceNew: true,
+                query: {
+                    jwt: window.localStorage.getItem('JWT'),
+                    lobbyId: this.$route.params.id,
+                }
+            });
+
+            
+            // User is successfully connected and ready to go
+            this.socket.on('connect', () => {
+
+                // Listen to ready event
+                this.socket.on('worldReady', (data) => {
+
+                    player = data.player;
+                    opponentPlayers = data.opponentPlayers;
+
+
+
+
+                    // Now we can set up PIXI
+                    const WORLD = new PIXI.Container();
+                    const WORLD_SIZE = { w: data.worldWidth, h: data.worldHeight };
+                    const WORLD_SPRITE = new PIXI.Sprite(this.game.loader.resources["map"].texture);
+                    WORLD.width = WORLD_SIZE.w;
+                    WORLD.height = WORLD_SIZE.h;
+                    WORLD.position.x = 0 + (this.gameSize.w / 2);
+                    WORLD.position.y = 0 + (this.gameSize.h / 2);
+                    WORLD_SPRITE.width = WORLD_SIZE.w;
+                    WORLD_SPRITE.height = WORLD_SIZE.h;
+                    WORLD_SPRITE.position.x = 0;
+                    WORLD_SPRITE.position.y = 0;
+                    WORLD.addChild(WORLD_SPRITE);
+                    this.game.stage.addChild(WORLD);
+
+                    // Render player
+                    const characterSprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
+                    characterSprite.position.set(this.gameSize.w / 2, this.gameSize.h / 2);
+                    characterSprite.anchor.set(0.5, 0.5);
+                    characterSprite.width = 60;
+                    characterSprite.height = 60;
+                    this.game.stage.addChild(characterSprite);
+
+                    const message = new PIXI.Text(player.displayName, new PIXI.TextStyle({ fontSize: 12, fill: "white" }));
+                    message.position.set(characterSprite.position.x, characterSprite.position.y - 30);
+                    message.anchor.set(0.5, 0.5);
+                    this.game.stage.addChild(message);
+
+                    
+                    for (var i = 0; i < opponentPlayers.length; i++) {
+                        const sprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
+                        sprite.position.set(opponentPlayers[i].position.x, opponentPlayers[i].position.y);
+                        sprite.anchor.set(0.5, 0.5);
+                        sprite.width = 60;
+                        sprite.height = 60;
+                        const textSprite = new PIXI.Text(opponentPlayers[i].displayName, new PIXI.TextStyle({ fontSize: 12, fill: "red" }));
+                        textSprite.position.set(opponentPlayers[i].position.x, opponentPlayers[i].position.y - 30);
+                        textSprite.anchor.set(0.5, 0.5);
+                        WORLD.addChild(textSprite);
+                        WORLD.addChild(sprite);
+                        opponentPlayers[i].sprite = sprite;
+                        opponentPlayers[i].textSprite = textSprite;
+                    }
+
+                    // Game loop
+                    GameLoop.setUpdate((delta) => {
+
+                        // Move character
+                        var deltaX = (this.aPressed ? 1 : 0) + (this.dPressed ? -1  : 0);
+                        var deltaY = (this.wPressed ? 1 : 0) + (this.sPressed ? -1  : 0);
+                        var mouseX = this.game.renderer.plugins.interaction.mouse.global.x;
+                        var mouseY = this.game.renderer.plugins.interaction.mouse.global.y;
+                        var angle = Math.atan2(mouseY - characterSprite.position.y, mouseX - characterSprite.position.x);
+                        this.socket.emit('move', {
+                            deltaX: deltaX,
+                            deltaY: deltaY,
+                            angle: angle,
+                        });
+
+                    }).start();
+                        
+                    // Call player move command instantly
+                    this.socket.emit('move', {
+                        deltaX: 0,
+                        deltaY: 0,
+                        angle: 0,
+                    });
+
+                    // On player move callback
+                    this.socket.on('playerMove', (data) => {
+                        WORLD.position.x = (this.gameSize.w - data.position.x) - (this.gameSize.w / 2);
+                        WORLD.position.y = (this.gameSize.h - data.position.y) - (this.gameSize.h / 2);
+                        characterSprite.rotation = data.angle;
+                    });
+
+
+                    this.socket.on('opponentPlayerMove',function(data) {
+                        for (var i = 0; i < opponentPlayers.length; i++) {
+                            if (opponentPlayers[i].id == data.id) {
+                                opponentPlayers[i].sprite.position.set(data.position.x, data.position.y);
+                                opponentPlayers[i].textSprite.position.set(data.position.x, data.position.y - 30);
+                                opponentPlayers[i].sprite.rotation = data.angle;
+                                return;
+                            }
+                        }
+                    });
+
+
+                    this.socket.on('opponentPlayerJoin', (data) => {
+                        const sprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
+                        sprite.position.set(data.position.x, data.position.y);
+                        sprite.anchor.set(0.5, 0.5);
+                        sprite.width = 60;
+                        sprite.height = 60;
+                        const textSprite = new PIXI.Text(data.displayName, new PIXI.TextStyle({ fontSize: 12, fill: "red" }));
+                        textSprite.position.set(data.position.x, data.position.y - 30);
+                        textSprite.anchor.set(0.5, 0.5);
+                        WORLD.addChild(textSprite);
+                        WORLD.addChild(sprite);
+                        data.sprite = sprite;
+                        data.textSprite = textSprite;
+                        opponentPlayers.push(data);
+                    });
+
+                    this.socket.on('opponentPlayerLeave', (data) => {
+                        opponentPlayers = opponentPlayers.filter((p) => {
+                            if (p.id == data.id) {
+                                WORLD.removeChild(p.sprite);
+                                WORLD.removeChild(p.textSprite);
+                                return false;
+                            } else {
+                                return true;
+                            }
+                        });
+                        console.log(opponentPlayers);
+                    });
+
+                    // Hide loader
+                    this.$store.commit('hideLoader');
+                });
+                
+               
+                
+
+            });
+            
+            // On connection error, probably unauthorized
+            this.socket.on('connect_error', (err) => {
+
+                // JWT error
+                if (err.message == "Invalid token") {
+                    alert('Sorry, you are unauthoized. Please log in.');
+                    window.localStorage.removeItem('JWT');
+                    window.localStorage.removeItem('userId');
+                    this.$router.push('/');
+                }
+
+                // Does not exist
+                else if (err.message == "The lobby does not exist") {
+                    alert('Sorry, this lobby no longer exists. We will redirect you to the dashboard.');
+                    this.$router.push('/dashboard/lobbies');
+                }
+
+                // General error
+                else {
+                    alert('Sorry, there was an error. We will redirect you to the dashboard.');
+                    this.$router.push('/dashboard/lobbies');
+                }
+
+            });
+
+
+
+/*
+            const WORLD = new PIXI.Container();
+            const WORLD_SIZE = { w: 900, h: 1200 };
+            const WORLD_SPRITE = new PIXI.Sprite(this.game.loader.resources["map"].texture);
+
+            WORLD.width = WORLD_SIZE.w;
+            WORLD.height = WORLD_SIZE.h;
+            WORLD.position.x = (this.gameSize.w - WORLD_SIZE.w) / 2;
+            WORLD.position.y = (this.gameSize.h - WORLD_SIZE.h) / 2;
+            WORLD_SPRITE.width = WORLD_SIZE.w;
+            WORLD_SPRITE.height = WORLD_SIZE.h;
+            WORLD_SPRITE.position.x = 0;
+            WORLD_SPRITE.position.y = 0;
+
+            WORLD.addChild(WORLD_SPRITE);
+            this.game.stage.addChild(WORLD);
+
+            const characterSprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
+            characterSprite.position.set(this.gameSize.w / 2, this.gameSize.h / 2);
+            characterSprite.anchor.set(0.5, 0.5);
+            characterSprite.width = 60;
+            characterSprite.height = 60;
+            this.game.stage.addChild(characterSprite);
+
+            this.impetus = new Impetus({
+                source: this.game.view,
+                bounce: false,
+                boundX: [-(WORLD_SIZE.w / 2), WORLD_SIZE.w / 2],
+                boundY: [-(WORLD_SIZE.h / 2), WORLD_SIZE.h / 2],
+                update: (x, y) => {
+                    WORLD.position.x = (WORLD.width  - this.gameSize.w - Math.abs((this.gameSize.w - WORLD_SIZE.w) / 2) - x) * -1;
+                    WORLD.position.y = (WORLD.height - this.gameSize.h - Math.abs((this.gameSize.h - WORLD_SIZE.h) / 2) - y) * -1;
+                    
+                    const PlayerCoords = {
+                        x: Math.abs(WORLD.position.x - (this.gameSize.w / 2)),
+                        y: Math.abs(WORLD.position.y - (this.gameSize.h / 2))
+                    }
+                    
+                }
+            });
+            this.impetus.pause();
+
+            GameLoop.setUpdate(() => {
+
+                // Move character
+                var deltaX = (this.aPressed ? 1 : 0) + (this.dPressed ? -1  : 0);
+                var deltaY = (this.wPressed ? 1 : 0) + (this.sPressed ? -1  : 0);
+                if (deltaX != 0 || deltaY != 0) {
+                    socket.emit('move', {
+                        deltaX: deltaX,
+                        deltaY: deltaY
+                    });
+                }
+
+                // Point character in correct direction
+                var mouseX = this.game.renderer.plugins.interaction.mouse.global.x;
+                var mouseY = this.game.renderer.plugins.interaction.mouse.global.y;
+                var angle = Math.atan2(mouseY - characterSprite.position.y, mouseX - characterSprite.position.x);
+                characterSprite.rotation = angle;
+
+            }).setDraw(() => {
+                this.game.renderer.render(this.game.stage);
+            }).setEnd((fps) => {
+
+            }).start();
+
+            this.socket.on('playerMove', (data) => {
+                this.impetus.updateDelta(data.deltaX, data.deltaY);
+            });
+
+            /*socket.on('playerMove', (data) => {
+                this.impetus.updateDelta(data.deltaX, data.deltaY);
+            });
+
+            socket.on('opponentPlayerMove', (data) => {
+                console.log('opponentPlayerMove', data);
+            })*/
+
+
+
+
+
+            /*
             const name = randomName.first();
             const socket = io.connect('http://localhost:8080/player', {'forceNew': true});
             socket.on('connect', () => {
@@ -204,7 +511,7 @@ export default {
                     console.log('opponentPlayerMove', data);
                 })
 
-            });
+            });*/
 
             
 
@@ -268,6 +575,8 @@ export default {
                 //max-height: 576px;
                 overflow: hidden;
                 cursor: url("~@/assets/crosshair.png") 16 16, auto;
+                z-index: 10;
+                background-color: black;
 
                 canvas {
                     position: absolute;

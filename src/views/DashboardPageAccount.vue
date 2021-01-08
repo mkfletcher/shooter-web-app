@@ -1,6 +1,7 @@
 <template>
     <div class="account-page d-block h-100">
        <h6>Account</h6>
+       <b-button @click="logout">Log Out</b-button>
     </div>
 </template>
 <script>
@@ -21,7 +22,11 @@
            
         },
         methods: {
-            
+            logout() {
+                window.localStorage.removeItem('JWT');
+                window.localStorage.removeItem('userId');
+                this.$router.push('/');
+            }
         }
     }
 </script>
