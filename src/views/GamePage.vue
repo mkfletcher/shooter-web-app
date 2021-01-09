@@ -13,8 +13,12 @@
             @keyup.w="wPressed = false"
             @keyup.d="dPressed = false"
             @keyup.s="sPressed = false"
-            @keyup.a="aPressed = false">
+            @keyup.a="aPressed = false"
+            @mousedown.left="leftMouseButtonPressed = true"
+            @mouseup.left="leftMouseButtonPressed = false">
             <div class="lines"></div>
+            <div class="timer" v-if="timer">{{ timer }}</div>
+            <div class="respawning" ref="respawning">You're terrible. <br> Prepare to Respawn...</div>
         </div>
         </div>
     </div>
@@ -28,6 +32,7 @@ import GameLoop from 'mainloop.js';
 import Impetus from '../helpers/impetus';
 import io from 'socket.io-client';
 import moment from 'moment';
+import Vuex from 'vuex'
 
 export default {
     
@@ -46,7 +51,12 @@ export default {
             dPressed: false,
             sPressed: false,
             aPressed: false,
-            playerSpeed: 3
+            leftMouseButtonPressed: false,
+            
+            // World properties
+            timer: null,
+            respawning: false,
+
         }
     },
 
@@ -126,9 +136,10 @@ export default {
 
 
             // Load assets
-            console.log(this.lobby.gameMap.mapTexturePath)
             this.game.loader.reset()
-            .add('soldier', require('../assets/enemySoldier.png'))
+            .add('soldier', require('../assets/soldier.png'))
+            .add('enemySoldier', require('../assets/enemySoldier.png'))
+            .add('bullet', require('../assets/bullet.png'))
             .add('map', this.lobby.gameMap.mapTexturePath)
             .load(this.onAssetsReady);
 
@@ -149,11 +160,13 @@ export default {
      */
     methods: {
 
+        /**
+         * Assets have been loaded so now connect to socket
+         */
         onAssetsReady: function () {
 
             var player = {};
             var opponentPlayers = [];
-            var userId = window.localStorage.getItem('JWT');
 
             // Connect using web sockets
             this.socket = io.connect(process.env.VUE_APP_API_BASE_URL, {
@@ -163,13 +176,198 @@ export default {
                     lobbyId: this.$route.params.id,
                 }
             });
-
             
             // User is successfully connected and ready to go
             this.socket.on('connect', () => {
 
                 // Listen to ready event
                 this.socket.on('worldReady', (data) => {
+
+                    // Create pixi world
+                    const WORLD = new PIXI.Container();
+                    const WORLD_SIZE = { w: data.worldWidth, h: data.worldHeight };
+                    const WORLD_SPRITE = new PIXI.Sprite(this.game.loader.resources["map"].texture);
+                    WORLD.width = WORLD_SIZE.w;
+                    WORLD.height = WORLD_SIZE.h;
+                    WORLD_SPRITE.width = WORLD_SIZE.w;
+                    WORLD_SPRITE.height = WORLD_SIZE.h;
+                    WORLD.addChild(WORLD_SPRITE);
+                    this.game.stage.addChild(WORLD);
+
+                    // Get id of current user
+                    var userId = window.localStorage.getItem("userId");
+                    var userRespawning = false;
+
+                    // Sprite references
+                    var playerSprites = {};
+
+                    // Listen to tick event
+                    this.socket.on('tick', (data) => {
+
+                        // Iterate through all players in world
+                        for (var i = 0; i < data.players.length; i++) {
+
+                            if (!data.players[i])
+                                continue;
+
+                            // If this sprite doesn't exist, create it
+                            if (!playerSprites[data.players[i].id]) {
+                                if (data.players[i].id == userId) {
+                                    playerSprites[data.players[i].id] = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
+                                } else {
+                                    playerSprites[data.players[i].id] = new PIXI.Sprite(this.game.loader.resources["enemySoldier"].texture);
+                                }
+                                playerSprites[data.players[i].id].anchor.set(0.5, 0.5);
+                                playerSprites[data.players[i].id].width = 40;
+                                playerSprites[data.players[i].id].height = 40;
+                                const textSprite = new PIXI.Text(data.players[i].health, new PIXI.TextStyle({ fontSize: 18, fill: "red" }));
+                                textSprite.position.set(0, 0);
+                                textSprite.anchor.set(0.5, 0.5);
+                                playerSprites[data.players[i].id].addChild(textSprite);
+                                WORLD.addChild(playerSprites[data.players[i].id]);
+                            }
+
+                            // If current player is dead hide sprite
+                            if (data.players[i].dead) {
+                                if (data.players[i].id == userId) {
+                                    userRespawning = true;
+                                }
+                                playerSprites[data.players[i].id].visible = false;
+                                continue; 
+                            } else {
+                                if (data.players[i].id == userId) {
+                                    userRespawning = false;
+                                }
+                                playerSprites[data.players[i].id].visible = true;
+                            }
+
+                            // If is current player, move world
+                            if (data.players[i].id == userId) {
+                                WORLD.position.x = (this.gameSize.w - data.players[i].position.x) - (this.gameSize.w / 2);
+                                WORLD.position.y = (this.gameSize.h - data.players[i].position.y) - (this.gameSize.h / 2);
+                            } 
+
+                            // Move and rotate player
+                            playerSprites[data.players[i].id].rotation = data.players[i].angle;
+                            playerSprites[data.players[i].id].position.set(data.players[i].position.x, data.players[i].position.y);
+                            playerSprites[data.players[i].id].children[0].text = data.players[i].health;
+
+                            // Show red tint if player has recently been hit
+                            if (data.players[i].hitTimer < 10) {
+                                playerSprites[data.players[i].id].tint = "0xff0000";
+                            } else {
+                                playerSprites[data.players[i].id].tint = "0xffffff";
+                            }
+                           
+
+                        }
+
+                        // Remove sprites whose players have left
+                        for (var playerId in playerSprites) {
+                            var isStillInGame = false;
+                            for (var i = 0; i < data.players.length; i++) {
+                                if (data.players[i].id == playerId) {
+                                    isStillInGame = true;
+                                    break;
+                                }
+                            }
+                            if (!isStillInGame) {
+                                WORLD.removeChild(playerSprites[playerId]);
+                                playerSprites[playerId] = null;
+                                delete playerSprites[playerId];
+                            }
+                        }
+
+                        // Send updates back
+                        if (!userRespawning) {
+                            this.socket.emit('playerUpdate', {
+                                deltaX: (this.aPressed ? 1 : 0) + (this.dPressed ? -1  : 0),
+                                deltaY: (this.wPressed ? 1 : 0) + (this.sPressed ? -1  : 0),
+                                angle: Math.atan2(this.game.renderer.plugins.interaction.mouse.global.y - this.gameSize.h / 2, this.game.renderer.plugins.interaction.mouse.global.x - this.gameSize.w / 2),
+                                shooting: this.leftMouseButtonPressed
+                            });
+                        }
+
+                        if (userRespawning) {
+                            this.$refs.respawning.style.visibility = 'visible';
+                        } else {
+                            this.$refs.respawning.style.visibility = 'hidden';
+                        }
+                        
+
+
+                    });
+
+                   /* GameLoop.setUpdate((delta) => {
+
+                        // Move character
+                        var deltaX = (this.aPressed ? 1 : 0) + (this.dPressed ? -1  : 0);
+                        var deltaY = (this.wPressed ? 1 : 0) + (this.sPressed ? -1  : 0);
+                        var mouseX = this.game.renderer.plugins.interaction.mouse.global.x;
+                        var mouseY = this.game.renderer.plugins.interaction.mouse.global.y;
+                        //var angle = Math.atan2(mouseY - characterSprite.position.y, mouseX - characterSprite.position.x);
+                        this.socket.emit('move', {
+                            deltaX: deltaX,
+                            deltaY: deltaY,
+                            angle: 0,
+                        });
+
+                    }).start();*/
+
+
+
+
+                
+                    // Create a new vue store for handling data
+                    /*const WorldModel = new Vuex.Store({
+                        state: {
+                            worldWidth: model.worldWidth,
+                            worldHeight: model.worldHeight,
+                            players: model.players,
+                        },
+                        mutations: {
+                            addPlayer (state, player) {
+                                state.players.push(player);
+                            },
+                            removePlayer (state, playerId) {
+                                state.players = state.filters.filter((player) => {
+                                    return player.id != playerId;
+                                });
+                            }
+                        },
+                        actions: {
+                        },
+                        getters: {
+                            worldWidth: (state) => {
+                                return state.worldHeight;
+                            },
+                            worldHeight: (state) => {
+                                return state.worldHeight;
+                            },
+                            players: (state) => {
+                                return state.players;
+                            },
+                            player: (state) => (playerId) => {
+                                return state.players.find(player => player.id === playerId);
+                            },
+                            playerOpponents: (state) => (playerId) => {
+                                return state.players.filter(player => player.id !== playerId)
+                            }
+                        }
+                    });
+
+                    // Get main player
+                    console.group();
+                    console.log(WorldModel.getters.player(window.localStorage.getItem("userId")));
+                    console.log(WorldModel.getters.players);
+                    console.log(WorldModel.getters.playerOpponents(window.localStorage.getItem("userId")));
+                    console.groupEnd();
+
+                    return;*/
+
+
+
+
 
                     player = data.player;
                     opponentPlayers = data.opponentPlayers;
@@ -178,7 +376,7 @@ export default {
 
 
                     // Now we can set up PIXI
-                    const WORLD = new PIXI.Container();
+                    /*const WORLD = new PIXI.Container();
                     const WORLD_SIZE = { w: data.worldWidth, h: data.worldHeight };
                     const WORLD_SPRITE = new PIXI.Sprite(this.game.loader.resources["map"].texture);
                     WORLD.width = WORLD_SIZE.w;
@@ -190,9 +388,9 @@ export default {
                     WORLD_SPRITE.position.x = 0;
                     WORLD_SPRITE.position.y = 0;
                     WORLD.addChild(WORLD_SPRITE);
-                    this.game.stage.addChild(WORLD);
+                    this.game.stage.addChild(WORLD);*/
 
-                    // Render player
+                    /*// Render player
                     const characterSprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
                     characterSprite.position.set(this.gameSize.w / 2, this.gameSize.h / 2);
                     characterSprite.anchor.set(0.5, 0.5);
@@ -292,7 +490,7 @@ export default {
                             }
                         });
                         console.log(opponentPlayers);
-                    });
+                    });*/
 
                     // Hide loader
                     this.$store.commit('hideLoader');
@@ -327,193 +525,6 @@ export default {
                 }
 
             });
-
-
-
-/*
-            const WORLD = new PIXI.Container();
-            const WORLD_SIZE = { w: 900, h: 1200 };
-            const WORLD_SPRITE = new PIXI.Sprite(this.game.loader.resources["map"].texture);
-
-            WORLD.width = WORLD_SIZE.w;
-            WORLD.height = WORLD_SIZE.h;
-            WORLD.position.x = (this.gameSize.w - WORLD_SIZE.w) / 2;
-            WORLD.position.y = (this.gameSize.h - WORLD_SIZE.h) / 2;
-            WORLD_SPRITE.width = WORLD_SIZE.w;
-            WORLD_SPRITE.height = WORLD_SIZE.h;
-            WORLD_SPRITE.position.x = 0;
-            WORLD_SPRITE.position.y = 0;
-
-            WORLD.addChild(WORLD_SPRITE);
-            this.game.stage.addChild(WORLD);
-
-            const characterSprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
-            characterSprite.position.set(this.gameSize.w / 2, this.gameSize.h / 2);
-            characterSprite.anchor.set(0.5, 0.5);
-            characterSprite.width = 60;
-            characterSprite.height = 60;
-            this.game.stage.addChild(characterSprite);
-
-            this.impetus = new Impetus({
-                source: this.game.view,
-                bounce: false,
-                boundX: [-(WORLD_SIZE.w / 2), WORLD_SIZE.w / 2],
-                boundY: [-(WORLD_SIZE.h / 2), WORLD_SIZE.h / 2],
-                update: (x, y) => {
-                    WORLD.position.x = (WORLD.width  - this.gameSize.w - Math.abs((this.gameSize.w - WORLD_SIZE.w) / 2) - x) * -1;
-                    WORLD.position.y = (WORLD.height - this.gameSize.h - Math.abs((this.gameSize.h - WORLD_SIZE.h) / 2) - y) * -1;
-                    
-                    const PlayerCoords = {
-                        x: Math.abs(WORLD.position.x - (this.gameSize.w / 2)),
-                        y: Math.abs(WORLD.position.y - (this.gameSize.h / 2))
-                    }
-                    
-                }
-            });
-            this.impetus.pause();
-
-            GameLoop.setUpdate(() => {
-
-                // Move character
-                var deltaX = (this.aPressed ? 1 : 0) + (this.dPressed ? -1  : 0);
-                var deltaY = (this.wPressed ? 1 : 0) + (this.sPressed ? -1  : 0);
-                if (deltaX != 0 || deltaY != 0) {
-                    socket.emit('move', {
-                        deltaX: deltaX,
-                        deltaY: deltaY
-                    });
-                }
-
-                // Point character in correct direction
-                var mouseX = this.game.renderer.plugins.interaction.mouse.global.x;
-                var mouseY = this.game.renderer.plugins.interaction.mouse.global.y;
-                var angle = Math.atan2(mouseY - characterSprite.position.y, mouseX - characterSprite.position.x);
-                characterSprite.rotation = angle;
-
-            }).setDraw(() => {
-                this.game.renderer.render(this.game.stage);
-            }).setEnd((fps) => {
-
-            }).start();
-
-            this.socket.on('playerMove', (data) => {
-                this.impetus.updateDelta(data.deltaX, data.deltaY);
-            });
-
-            /*socket.on('playerMove', (data) => {
-                this.impetus.updateDelta(data.deltaX, data.deltaY);
-            });
-
-            socket.on('opponentPlayerMove', (data) => {
-                console.log('opponentPlayerMove', data);
-            })*/
-
-
-
-
-
-            /*
-            const name = randomName.first();
-            const socket = io.connect('http://localhost:8080/player', {'forceNew': true});
-            socket.on('connect', () => {
-                
-                socket.emit('joinGame', {
-                    name: name,
-                });
-
-
-                const WORLD = new PIXI.Container();
-                const WORLD_SIZE = { w: 900, h: 1200 };
-                const WORLD_SPRITE = new PIXI.Sprite(this.game.loader.resources["map"].texture);
-
-                WORLD.width = WORLD_SIZE.w;
-                WORLD.height = WORLD_SIZE.h;
-                WORLD.position.x = (this.gameSize.w - WORLD_SIZE.w) / 2;
-                WORLD.position.y = (this.gameSize.h - WORLD_SIZE.h) / 2;
-                WORLD_SPRITE.width = WORLD_SIZE.w;
-                WORLD_SPRITE.height = WORLD_SIZE.h;
-                WORLD_SPRITE.position.x = 0;
-                WORLD_SPRITE.position.y = 0;
-
-                WORLD.addChild(WORLD_SPRITE);
-                this.game.stage.addChild(WORLD);
-
-                const characterSprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
-                characterSprite.position.set(this.gameSize.w / 2, this.gameSize.h / 2);
-                characterSprite.anchor.set(0.5, 0.5);
-                characterSprite.width = 60;
-                characterSprite.height = 60;
-                this.game.stage.addChild(characterSprite);
-
-                const randomSprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
-                randomSprite.position.set(100, 100);
-                randomSprite.anchor.set(0.5, 0.5);
-                randomSprite.width = 60;
-                randomSprite.height = 60;
-                WORLD.addChild(randomSprite);
-
-
-                const message = new PIXI.Text(name, new PIXI.TextStyle({ fontSize: 18, fill: "white" }));
-                message.position.set(characterSprite.position.x, characterSprite.position.y - 30);
-                message.anchor.set(0.5, 0.5);
-                this.game.stage.addChild(message);
-
-                this.impetus = new Impetus({
-                    source: this.game.view,
-                    bounce: false,
-                    boundX: [-(WORLD_SIZE.w / 2), WORLD_SIZE.w / 2],
-                    boundY: [-(WORLD_SIZE.h / 2), WORLD_SIZE.h / 2],
-                    update: (x, y) => {
-                        WORLD.position.x = (WORLD.width  - this.gameSize.w - Math.abs((this.gameSize.w - WORLD_SIZE.w) / 2) - x) * -1;
-                        WORLD.position.y = (WORLD.height - this.gameSize.h - Math.abs((this.gameSize.h - WORLD_SIZE.h) / 2) - y) * -1;
-                        
-                        const PlayerCoords = {
-                            x: Math.abs(WORLD.position.x - (this.gameSize.w / 2)),
-                            y: Math.abs(WORLD.position.y - (this.gameSize.h / 2))
-                        }
-                       
-                    }
-                });
-                this.impetus.pause();
-
-                GameLoop.setUpdate(() => {
-
-                    // Move character
-                    var deltaX = (this.aPressed ? 1 : 0) + (this.dPressed ? -1  : 0);
-                    var deltaY = (this.wPressed ? 1 : 0) + (this.sPressed ? -1  : 0);
-                    if (deltaX != 0 || deltaY != 0) {
-                        socket.emit('move', {
-                            deltaX: deltaX,
-                            deltaY: deltaY
-                        });
-                        //this.impetus.updateDelta(deltaX, deltaY);
-                    }
-
-                    // Point character in correct direction
-                    var mouseX = this.game.renderer.plugins.interaction.mouse.global.x;
-                    var mouseY = this.game.renderer.plugins.interaction.mouse.global.y;
-                    var angle = Math.atan2(mouseY - characterSprite.position.y, mouseX - characterSprite.position.x);
-                    characterSprite.rotation = angle;
-
-                }).setDraw(() => {
-                    //this.game.renderer.render(this.game.stage);
-                }).setEnd((fps) => {
-
-                }).start();
-
-                
-                socket.on('playerMove', (data) => {
-                    this.impetus.updateDelta(data.deltaX, data.deltaY);
-                });
-
-                socket.on('opponentPlayerMove', (data) => {
-                    console.log('opponentPlayerMove', data);
-                })
-
-            });*/
-
-            
-
 
         },
 
@@ -584,6 +595,33 @@ export default {
                     width: 100%!important;
                     height: 100%!important;
                 }
+            }
+
+            .timer {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 200px;
+                height: 100px;
+                z-index: 101;
+                pointer-events: none;
+                font-size: 12px;
+                color: #FFF;
+            }
+
+            
+            .respawning {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                padding-top: 220px;
+                z-index: 101;
+                pointer-events: none;
+                font-size: 12px;
+                color: #FFF;
+                background-color:rgba(0,0,0,0.5);
             }
 
             .lines {

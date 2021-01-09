@@ -28,6 +28,8 @@ html {
     height: 100vh;
     overflow: hidden;
     font-size: 13px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
 
 }
 body {
