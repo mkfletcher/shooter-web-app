@@ -2,24 +2,69 @@
     <div class="game-page">
         <div class="game-page-container">
             <div class="texture-alum"></div>
-        <div 
-            id="gameCanvas" 
-            ref="gameCanvas" 
-            tabindex="1"
-            @keydown.w="wPressed = true"
-            @keydown.d="dPressed = true"
-            @keydown.s="sPressed = true"
-            @keydown.a="aPressed = true"
-            @keyup.w="wPressed = false"
-            @keyup.d="dPressed = false"
-            @keyup.s="sPressed = false"
-            @keyup.a="aPressed = false"
-            @mousedown.left="leftMouseButtonPressed = true"
-            @mouseup.left="leftMouseButtonPressed = false">
-            <div class="lines"></div>
-            <div class="timer" v-if="timer">{{ timer }}</div>
-            <div class="respawning" ref="respawning">You're terrible. <br> Prepare to Respawn...</div>
-        </div>
+            <div id="gameCanvas" ref="gameCanvas" tabindex="1"
+                @keydown.w="wPressed = true"
+                @keydown.d="dPressed = true"
+                @keydown.s="sPressed = true"
+                @keydown.a="aPressed = true"
+                @keyup.w="wPressed = false"
+                @keyup.d="dPressed = false"
+                @keyup.s="sPressed = false"
+                @keyup.a="aPressed = false"
+                @mousedown.left="leftMouseButtonPressed = true"
+                @mouseup.left="leftMouseButtonPressed = false">
+                <div class="lines"></div>
+                <div class="xp-drops">
+                    <div class="xp-drop" v-for="(playerKillXpDrop) in playerKillXpDrops" :key="playerKillXpDrop.id" >{{ playerKillXpDrop.text }}</div>
+                </div>
+                <div class="buff-drops">
+                    <div class="buff-drop" v-for="(playerBuffDrop) in playerBuffDrops" :key="playerBuffDrop.id" >{{ playerBuffDrop.text }}</div>
+                </div>
+                <div class="respawning" ref="respawning">
+                    <p>Unlucky, you were killed.</p>
+                    <h3 class="mb-0">Prepare to Respawn...</h3>
+                </div>
+                <div class="start-countdown" v-if="hasStarted === false">
+                    <p>Game starting in:</p>
+                    <h3 class="mb-3">{{ timeUntilStart ? timeUntilStart + ' seconds' : '' }}</h3>
+                </div>
+                <div class="end-game" v-if="hasEnded">
+                    <p>Game finished.</p>
+                    <h3 class="mb-3">Thanks for playing</h3>
+                </div>
+            </div>
+            <div id="HUD">
+                <div class="hud-game-info">
+                    <h5 class="weight-600 mt-2 mb-1" v-if="lobby">{{ lobby.gameMap.mapTitle }}</h5>
+                    <h6 class="weight-400 m-0" v-if="lobby">· {{ lobby.gameMode.gameModeTitle }} ·</h6>
+                    <hr>
+                    <h6 class="weight-400 mb-1" v-if="hasStarted">Time remaining: {{ timeUntilEnd }}s</h6>
+                    <hr>
+                    <h6 class="weight-400 mb-1">Health: {{ playerHealth }}</h6>
+                    <h6 class="weight-400 mb-1">Movement Speed: {{ playerSpeed }}</h6>
+                    <h6 class="weight-400 mb-1">Fire Rate: {{ playerFireRate }}</h6>
+                    <h6 class="weight-400 mb-1">Fire Damage: {{ playerFireDamage }}</h6>
+                    <h6 class="weight-400 mb-1">Kills: {{ playerKills }}</h6>
+                    <h6 class="weight-400 mb-1">Kill Streak: {{ playerKillStreak }}</h6>
+                </div>
+                <hr class="mb-0">
+                <div class="hud-kill-history">
+                    <div v-for="item in killHistory" :key="item.id">
+                        <div class="row no-gutters">
+                            <div class="col-5 text-left  align-self-center pl-2">
+                                <p class="text-left m-0" :style="`color:${item.player1 == playerDisplayName ? '#212121' : '#ff4747'}`">{{ item.player1 }} ({{item.player1Ks}}ks)</p>
+                            </div>
+                            <div class="col-2 text-center align-self-center">
+                                <p class="w-100 text-center m-0"><img src="@/assets/bullet-2.png" width="24"/></p>
+                            </div>
+                            <div class="col-5 text-right  align-self-center pr-2">
+                                <p class="text-right m-0" :style="`color:${item.player2 == playerDisplayName ? '#212121' : '#ff4747'}`">{{ item.player2 }} ({{item.player2Ks}}ks)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr class="mt-0">
+            </div>
         </div>
     </div>
 </template>
@@ -43,6 +88,10 @@ export default {
         return {
             requestLobbyCancelToken: cancelToken(),
             lobby: null,
+            hasStarted: null,
+            timeUntilStart: null,
+            hasEnded: false,
+            timeUntilEnd: null,
             impetus: null,
             game: null,
             gameSize: { w: 720, h: 576 },
@@ -56,6 +105,20 @@ export default {
             // World properties
             timer: null,
             respawning: false,
+
+            // Player properties
+            playerDisplayName: "",
+            playerHealth: 100,
+            playerSpeed: 6,
+            playerFireRate: 6,
+            playerFireDamage: 10,
+            playerKills: 0,
+            playerKillStreak: 0,
+            playerKillXpDrops: [],
+            playerKillXpDropsCount: 0,
+            playerBuffDrops: [],
+            playerBuffDropsCount: 0,
+            killHistory: [],
 
         }
     },
@@ -90,7 +153,7 @@ export default {
     mounted: function () {
 
         // Show loader
-        this.$store.commit('showLoader', "Joining lobby...");
+        //this.$store.commit('showLoader', "Joining lobby...");
 
         // Make sure game lobby still exists
         request({
@@ -105,12 +168,12 @@ export default {
             // If lobby has finished, kick user out
             if (moment().isAfter(res.json.data.gameEndDatetime)) {
                 alert('Sorry, this lobby no longer exists. We will redirect you to the dashboard.');
-                this.$store.commit('hideLoader');
+                //this.$store.commit('hideLoader');
                 this.$router.push('/dashboard/lobbies');
             }
 
             // The lobby does exist, now load pixi.js and assets
-            this.$store.commit('showLoader', "Loading assets...");
+            //this.$store.commit('showLoader', "Loading assets...");
             
             // Create game
             this.game = new PIXI.Application({
@@ -146,7 +209,7 @@ export default {
             
         }).catch((err) => {
             alert('Sorry, this lobby no longer exists. We will redirect you to the dashboard');
-            this.$store.commit('hideLoader');
+            //this.$store.commit('hideLoader');
             this.$router.push('/dashboard/lobbies');
             console.log(err);
         });
@@ -180,8 +243,26 @@ export default {
             // User is successfully connected and ready to go
             this.socket.on('connect', () => {
 
+                // If lobby is full, disconnect
+                this.socket.on('lobbyFull', (data) => {
+                    lobbyFull
+                });
+
                 // Listen to ready event
                 this.socket.on('worldReady', (data) => {
+
+                    const textStyleWhite = new PIXI.TextStyle({ 
+                        fontSize: 14, 
+                        fill: "white", 
+                        strokeThickness: 2,
+                        letterSpacing: 1,
+                    });
+                    const textStyleRed = new PIXI.TextStyle({ 
+                        fontSize: 14, 
+                        fill: 0xff4747, 
+                        strokeThickness: 2,
+                        letterSpacing: 1,
+                    });
 
                     // Create pixi world
                     const WORLD = new PIXI.Container();
@@ -200,31 +281,129 @@ export default {
 
                     // Sprite references
                     var playerSprites = {};
+                    var playerTextSprites = {};
 
                     // Listen to tick event
                     this.socket.on('tick', (data) => {
+
+                        // Set the time left
+                        this.hasStarted = data.hasStarted;
+                        this.timeUntilStart = data.timeUntilStart;
+                        this.hasEnded = data.hasEnded;
+                        this.timeUntilEnd = data.timeUntilEnd;
+
+                        // If there is new kill history, update ui
+                        if (data.killHistory.length > this.killHistory.length) {
+                            this.killHistory = data.killHistory;
+                        }
 
                         // Iterate through all players in world
                         for (var i = 0; i < data.players.length; i++) {
 
                             if (!data.players[i])
                                 continue;
+                            
+                            // If is current user in loop
+                            if (data.players[i].id == userId) {
+
+                                // If player has gained a kill
+                                if (data.players[i].kills > this.playerKills) {
+                                    var xpDrop = { id: this.playerKillXpDropsCount++, text: "+1 kill", }
+                                    this.playerKillXpDrops.push(xpDrop);
+                                    ((xpd) => {
+                                        setTimeout(() => {
+                                            this.playerKillXpDrops.splice(this.playerKillXpDrops.indexOf(xpd), 1);
+                                        }, 1000);
+                                    })(xpDrop);
+                                }
+
+                                // Buff exp drops
+                                if (data.players[i].speed > this.playerSpeed) {
+                                    setTimeout(() => {
+                                        var xpDrop = { id: this.playerBuffDropsCount++, text: "+1 speed", }
+                                        this.playerBuffDrops.push(xpDrop);
+                                        ((xpd) => {
+                                            setTimeout(() => {
+                                                this.playerBuffDrops.splice(this.playerBuffDrops.indexOf(xpd), 1);
+                                            }, 1000);
+                                        })(xpDrop);
+                                    }, 500);
+                                } else if (data.players[i].fireDamage > this.playerFireDamage) {
+                                    setTimeout(() => {
+                                        var xpDrop = { id: this.playerBuffDropsCount++, text: "+5 damage", }
+                                        this.playerBuffDrops.push(xpDrop);
+                                        ((xpd) => {
+                                            setTimeout(() => {
+                                                this.playerBuffDrops.splice(this.playerBuffDrops.indexOf(xpd), 1);
+                                            }, 1000);
+                                        })(xpDrop);
+                                    }, 500);
+                                } else if (data.players[i].fireRate < this.playerFireRate) {
+                                    setTimeout(() => {
+                                        var xpDrop = { id: this.playerBuffDropsCount++, text: "+1 fire rate", }
+                                        this.playerBuffDrops.push(xpDrop);
+                                        ((xpd) => {
+                                            setTimeout(() => {
+                                                this.playerBuffDrops.splice(this.playerBuffDrops.indexOf(xpd), 1);
+                                            }, 1000);
+                                        })(xpDrop);
+                                    }, 500);
+                                } else if (data.players[i].health > this.playerHealth && !userRespawning) {
+                                    var healthIncrease = (data.players[i].health - this.playerHealth);
+                                    ((inc) => {
+                                        setTimeout(() => {
+                                            var xpDrop = { id: this.playerBuffDropsCount++, text: "+" + (inc) + " health" , }
+                                            this.playerBuffDrops.push(xpDrop);
+                                            ((xpd) => {
+                                                setTimeout(() => {
+                                                    this.playerBuffDrops.splice(this.playerBuffDrops.indexOf(xpd), 1);
+                                                }, 1000);
+                                            })(xpDrop);
+                                        }, 500);
+                                    })(healthIncrease);
+                                }
+
+                                // Update stats
+                                this.playerDisplayName = data.players[i].displayName;
+                                this.playerHealth = data.players[i].health;
+                                this.playerSpeed = data.players[i].speed;
+                                this.playerFireRate = data.players[i].fireRate;
+                                this.playerKills = data.players[i].kills;
+                                this.playerKillStreak = data.players[i].killStreak;
+                                this.playerFireDamage = data.players[i].fireDamage;
+
+                            }
+                            
+                            // if a bullet has been shot, show a yellow line for a small time period
+                            if (data.players[i].bullet) {
+                                let line = new PIXI.Graphics();
+                                line.alpha = 0.5;
+                                line.lineStyle(2, 0xf1c40f).moveTo(data.players[i].bullet.start.x, data.players[i].bullet.start.y).lineTo(data.players[i].bullet.end.x, data.players[i].bullet.end.y);
+                                WORLD.addChild(line);
+                                (function(l){ 
+                                    setTimeout(() => {
+                                        WORLD.removeChild(l);
+                                    }, 20);
+                                })(line);
+                            }
 
                             // If this sprite doesn't exist, create it
                             if (!playerSprites[data.players[i].id]) {
                                 if (data.players[i].id == userId) {
                                     playerSprites[data.players[i].id] = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
+                                    playerTextSprites[data.players[i].id] = new PIXI.Text(data.players[i].displayName, textStyleWhite);
                                 } else {
                                     playerSprites[data.players[i].id] = new PIXI.Sprite(this.game.loader.resources["enemySoldier"].texture);
+                                    playerTextSprites[data.players[i].id] = new PIXI.Text(data.players[i].displayName, textStyleRed);
                                 }
                                 playerSprites[data.players[i].id].anchor.set(0.5, 0.5);
                                 playerSprites[data.players[i].id].width = 40;
                                 playerSprites[data.players[i].id].height = 40;
-                                const textSprite = new PIXI.Text(data.players[i].health, new PIXI.TextStyle({ fontSize: 18, fill: "red" }));
-                                textSprite.position.set(0, 0);
-                                textSprite.anchor.set(0.5, 0.5);
-                                playerSprites[data.players[i].id].addChild(textSprite);
                                 WORLD.addChild(playerSprites[data.players[i].id]);
+
+                                playerTextSprites[data.players[i].id].anchor.set(0.5, 0.5);
+                                WORLD.addChild(playerTextSprites[data.players[i].id]);
+
                             }
 
                             // If current player is dead hide sprite
@@ -233,12 +412,14 @@ export default {
                                     userRespawning = true;
                                 }
                                 playerSprites[data.players[i].id].visible = false;
+                                playerTextSprites[data.players[i].id].visible = false;
                                 continue; 
                             } else {
                                 if (data.players[i].id == userId) {
                                     userRespawning = false;
                                 }
                                 playerSprites[data.players[i].id].visible = true;
+                                playerTextSprites[data.players[i].id].visible = true;
                             }
 
                             // If is current player, move world
@@ -250,15 +431,14 @@ export default {
                             // Move and rotate player
                             playerSprites[data.players[i].id].rotation = data.players[i].angle;
                             playerSprites[data.players[i].id].position.set(data.players[i].position.x, data.players[i].position.y);
-                            playerSprites[data.players[i].id].children[0].text = data.players[i].health;
-
-                            // Show red tint if player has recently been hit
-                            if (data.players[i].hitTimer < 10) {
-                                playerSprites[data.players[i].id].tint = "0xff0000";
-                            } else {
-                                playerSprites[data.players[i].id].tint = "0xffffff";
-                            }
+                            playerTextSprites[data.players[i].id].position.set(data.players[i].position.x, data.players[i].position.y - 25);
                            
+                            // Show red tint if player has recently been hit
+                            if (data.players[i].hit < 1) {
+                                playerSprites[data.players[i].id].tint = "0xffffff";
+                            } else {
+                                playerSprites[data.players[i].id].tint = "0xff0000";
+                            }
 
                         }
 
@@ -266,6 +446,8 @@ export default {
                         for (var playerId in playerSprites) {
                             var isStillInGame = false;
                             for (var i = 0; i < data.players.length; i++) {
+                                if (!data.players[i])
+                                    continue;
                                 if (data.players[i].id == playerId) {
                                     isStillInGame = true;
                                     break;
@@ -275,11 +457,14 @@ export default {
                                 WORLD.removeChild(playerSprites[playerId]);
                                 playerSprites[playerId] = null;
                                 delete playerSprites[playerId];
+                                WORLD.removeChild(playerTextSprites[playerId]);
+                                playerTextSprites[playerId] = null;
+                                delete playerTextSprites[playerId];
                             }
                         }
 
                         // Send updates back
-                        if (!userRespawning) {
+                        if (this.hasStarted && !this.hasEnded) {
                             this.socket.emit('playerUpdate', {
                                 deltaX: (this.aPressed ? 1 : 0) + (this.dPressed ? -1  : 0),
                                 deltaY: (this.wPressed ? 1 : 0) + (this.sPressed ? -1  : 0),
@@ -293,216 +478,20 @@ export default {
                         } else {
                             this.$refs.respawning.style.visibility = 'hidden';
                         }
-                        
-
 
                     });
-
-                   /* GameLoop.setUpdate((delta) => {
-
-                        // Move character
-                        var deltaX = (this.aPressed ? 1 : 0) + (this.dPressed ? -1  : 0);
-                        var deltaY = (this.wPressed ? 1 : 0) + (this.sPressed ? -1  : 0);
-                        var mouseX = this.game.renderer.plugins.interaction.mouse.global.x;
-                        var mouseY = this.game.renderer.plugins.interaction.mouse.global.y;
-                        //var angle = Math.atan2(mouseY - characterSprite.position.y, mouseX - characterSprite.position.x);
-                        this.socket.emit('move', {
-                            deltaX: deltaX,
-                            deltaY: deltaY,
-                            angle: 0,
-                        });
-
-                    }).start();*/
-
-
-
-
-                
-                    // Create a new vue store for handling data
-                    /*const WorldModel = new Vuex.Store({
-                        state: {
-                            worldWidth: model.worldWidth,
-                            worldHeight: model.worldHeight,
-                            players: model.players,
-                        },
-                        mutations: {
-                            addPlayer (state, player) {
-                                state.players.push(player);
-                            },
-                            removePlayer (state, playerId) {
-                                state.players = state.filters.filter((player) => {
-                                    return player.id != playerId;
-                                });
-                            }
-                        },
-                        actions: {
-                        },
-                        getters: {
-                            worldWidth: (state) => {
-                                return state.worldHeight;
-                            },
-                            worldHeight: (state) => {
-                                return state.worldHeight;
-                            },
-                            players: (state) => {
-                                return state.players;
-                            },
-                            player: (state) => (playerId) => {
-                                return state.players.find(player => player.id === playerId);
-                            },
-                            playerOpponents: (state) => (playerId) => {
-                                return state.players.filter(player => player.id !== playerId)
-                            }
-                        }
-                    });
-
-                    // Get main player
-                    console.group();
-                    console.log(WorldModel.getters.player(window.localStorage.getItem("userId")));
-                    console.log(WorldModel.getters.players);
-                    console.log(WorldModel.getters.playerOpponents(window.localStorage.getItem("userId")));
-                    console.groupEnd();
-
-                    return;*/
-
-
-
-
-
-                    player = data.player;
-                    opponentPlayers = data.opponentPlayers;
-
-
-
-
-                    // Now we can set up PIXI
-                    /*const WORLD = new PIXI.Container();
-                    const WORLD_SIZE = { w: data.worldWidth, h: data.worldHeight };
-                    const WORLD_SPRITE = new PIXI.Sprite(this.game.loader.resources["map"].texture);
-                    WORLD.width = WORLD_SIZE.w;
-                    WORLD.height = WORLD_SIZE.h;
-                    WORLD.position.x = 0 + (this.gameSize.w / 2);
-                    WORLD.position.y = 0 + (this.gameSize.h / 2);
-                    WORLD_SPRITE.width = WORLD_SIZE.w;
-                    WORLD_SPRITE.height = WORLD_SIZE.h;
-                    WORLD_SPRITE.position.x = 0;
-                    WORLD_SPRITE.position.y = 0;
-                    WORLD.addChild(WORLD_SPRITE);
-                    this.game.stage.addChild(WORLD);*/
-
-                    /*// Render player
-                    const characterSprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
-                    characterSprite.position.set(this.gameSize.w / 2, this.gameSize.h / 2);
-                    characterSprite.anchor.set(0.5, 0.5);
-                    characterSprite.width = 60;
-                    characterSprite.height = 60;
-                    this.game.stage.addChild(characterSprite);
-
-                    const message = new PIXI.Text(player.displayName, new PIXI.TextStyle({ fontSize: 12, fill: "white" }));
-                    message.position.set(characterSprite.position.x, characterSprite.position.y - 30);
-                    message.anchor.set(0.5, 0.5);
-                    this.game.stage.addChild(message);
-
-                    
-                    for (var i = 0; i < opponentPlayers.length; i++) {
-                        const sprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
-                        sprite.position.set(opponentPlayers[i].position.x, opponentPlayers[i].position.y);
-                        sprite.anchor.set(0.5, 0.5);
-                        sprite.width = 60;
-                        sprite.height = 60;
-                        const textSprite = new PIXI.Text(opponentPlayers[i].displayName, new PIXI.TextStyle({ fontSize: 12, fill: "red" }));
-                        textSprite.position.set(opponentPlayers[i].position.x, opponentPlayers[i].position.y - 30);
-                        textSprite.anchor.set(0.5, 0.5);
-                        WORLD.addChild(textSprite);
-                        WORLD.addChild(sprite);
-                        opponentPlayers[i].sprite = sprite;
-                        opponentPlayers[i].textSprite = textSprite;
-                    }
-
-                    // Game loop
-                    GameLoop.setUpdate((delta) => {
-
-                        // Move character
-                        var deltaX = (this.aPressed ? 1 : 0) + (this.dPressed ? -1  : 0);
-                        var deltaY = (this.wPressed ? 1 : 0) + (this.sPressed ? -1  : 0);
-                        var mouseX = this.game.renderer.plugins.interaction.mouse.global.x;
-                        var mouseY = this.game.renderer.plugins.interaction.mouse.global.y;
-                        var angle = Math.atan2(mouseY - characterSprite.position.y, mouseX - characterSprite.position.x);
-                        this.socket.emit('move', {
-                            deltaX: deltaX,
-                            deltaY: deltaY,
-                            angle: angle,
-                        });
-
-                    }).start();
-                        
-                    // Call player move command instantly
-                    this.socket.emit('move', {
-                        deltaX: 0,
-                        deltaY: 0,
-                        angle: 0,
-                    });
-
-                    // On player move callback
-                    this.socket.on('playerMove', (data) => {
-                        WORLD.position.x = (this.gameSize.w - data.position.x) - (this.gameSize.w / 2);
-                        WORLD.position.y = (this.gameSize.h - data.position.y) - (this.gameSize.h / 2);
-                        characterSprite.rotation = data.angle;
-                    });
-
-
-                    this.socket.on('opponentPlayerMove',function(data) {
-                        for (var i = 0; i < opponentPlayers.length; i++) {
-                            if (opponentPlayers[i].id == data.id) {
-                                opponentPlayers[i].sprite.position.set(data.position.x, data.position.y);
-                                opponentPlayers[i].textSprite.position.set(data.position.x, data.position.y - 30);
-                                opponentPlayers[i].sprite.rotation = data.angle;
-                                return;
-                            }
-                        }
-                    });
-
-
-                    this.socket.on('opponentPlayerJoin', (data) => {
-                        const sprite = new PIXI.Sprite(this.game.loader.resources["soldier"].texture);
-                        sprite.position.set(data.position.x, data.position.y);
-                        sprite.anchor.set(0.5, 0.5);
-                        sprite.width = 60;
-                        sprite.height = 60;
-                        const textSprite = new PIXI.Text(data.displayName, new PIXI.TextStyle({ fontSize: 12, fill: "red" }));
-                        textSprite.position.set(data.position.x, data.position.y - 30);
-                        textSprite.anchor.set(0.5, 0.5);
-                        WORLD.addChild(textSprite);
-                        WORLD.addChild(sprite);
-                        data.sprite = sprite;
-                        data.textSprite = textSprite;
-                        opponentPlayers.push(data);
-                    });
-
-                    this.socket.on('opponentPlayerLeave', (data) => {
-                        opponentPlayers = opponentPlayers.filter((p) => {
-                            if (p.id == data.id) {
-                                WORLD.removeChild(p.sprite);
-                                WORLD.removeChild(p.textSprite);
-                                return false;
-                            } else {
-                                return true;
-                            }
-                        });
-                        console.log(opponentPlayers);
-                    });*/
 
                     // Hide loader
-                    this.$store.commit('hideLoader');
+                    //this.$store.commit('hideLoader');
                 });
-                
-               
                 
 
             });
             
             // On connection error, probably unauthorized
             this.socket.on('connect_error', (err) => {
+
+                console.log(err.message);
 
                 // JWT error
                 if (err.message == "Invalid token") {
@@ -515,6 +504,12 @@ export default {
                 // Does not exist
                 else if (err.message == "The lobby does not exist") {
                     alert('Sorry, this lobby no longer exists. We will redirect you to the dashboard.');
+                    this.$router.push('/dashboard/lobbies');
+                }
+
+                // Full
+                else if (err.message == "Lobby Full") {
+                    alert("Sorry this lobby is full. Please try again later. We will redirect you to the dashboard.");
                     this.$router.push('/dashboard/lobbies');
                 }
 
@@ -566,7 +561,7 @@ export default {
             position: relative;
             display: inline-block;
             vertical-align: middle;
-            width: 720px;
+            width: 920px;
             height: 576px;
             max-height:calc(100% - 60px);
             background-color: #FFF;
@@ -579,10 +574,8 @@ export default {
             #gameCanvas {
                 position: relative;
                 float: left;
-                width: 100%;
-                height: 100%;
-                //max-width: 720px;
-                //max-height: 576px;
+                width: 720px;
+                height: 576px;
                 overflow: hidden;
                 cursor: url("~@/assets/crosshair.png") 16 16, auto;
                 z-index: 10;
@@ -595,21 +588,140 @@ export default {
                     width: 100%!important;
                     height: 100%!important;
                 }
+
+                .xp-drops {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    pointer-events: none;
+                    z-index: 100;
+
+                    .xp-drop {
+                        position: absolute;
+                        top: calc(50% - 100px);
+                        left: calc(50% - 100px);
+                        height: 100px;
+                        width: 200px;
+                        line-height: 100px;
+                        color: #f1c40f;
+                        font-size: 16px;
+                        font-weight: 600;
+                        animation-duration:1000ms;
+                        animation-iteration-count:1;
+                        animation-timing-function: ease-out;
+                        animation-fill-mode:forwards;
+                        animation-name: xpDropAnimation;
+
+                        @keyframes xpDropAnimation{
+                            0% {
+                                opacity: 1;
+                                transform:translateY(0%)
+                            } 100% {
+                                opacity: 0;
+                                transform:translateY(-30px);
+                            }
+                        }
+                    }
+                }
+
+                .buff-drops {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    pointer-events: none;
+                    z-index: 100;
+
+                    .buff-drop {
+                        position: absolute;
+                        top: calc(50% - 100px);
+                        left: calc(50% - 100px);
+                        height: 100px;
+                        width: 200px;
+                        line-height: 100px;
+                        color: #2ecc71;
+                        font-size: 16px;
+                        font-weight: 600;
+                        animation-duration:1000ms;
+                        animation-iteration-count:1;
+                        animation-timing-function: ease-out;
+                        animation-fill-mode:forwards;
+                        animation-name: xpDropAnimation;
+
+                        @keyframes xpDropAnimation{
+                            0% {
+                                opacity: 1;
+                                transform:translateY(0%)
+                            } 100% {
+                                opacity: 0;
+                                transform:translateY(-30px);
+                            }
+                        }
+                    }
+                }
             }
 
-            .timer {
+            #HUD {
+                position: relative;
+                float: left;
+                width: calc(100% - 720px);
+                height: 576px;
+                overflow: hidden;
+                font-size: 13px;
+
+                .hud-info {
+                    position: relative;
+                    display: block;
+                    width: 100%;
+                    height: 200px;
+                    overflow: hidden;
+                }
+
+                .hud-kill-history {
+                    position: relative;
+                    display: block;
+                    width: 100%;
+                    height: 120px;
+                    overflow: hidden;
+                    font-size: 12px;
+
+                    p {
+                        font-weight: 500;
+                    }
+                }
+            }
+
+            .start-countdown {
                 position: absolute;
                 top: 0;
                 left: 0;
-                width: 200px;
-                height: 100px;
+                width: 100%;
+                height: 100%;
+                padding-top: 220px;
                 z-index: 101;
                 pointer-events: none;
-                font-size: 12px;
+                font-size: 13px;
                 color: #FFF;
+                background-color:rgba(0,0,0,0.75);
+            }
+            
+            .end-game {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                padding-top: 220px;
+                z-index: 101;
+                pointer-events: none;
+                font-size: 13px;
+                color: #FFF;
+                background-color:rgba(0,0,0,0.75);
             }
 
-            
             .respawning {
                 position: absolute;
                 top: 0;
@@ -622,6 +734,7 @@ export default {
                 font-size: 12px;
                 color: #FFF;
                 background-color:rgba(0,0,0,0.5);
+                visibility: hidden;
             }
 
             .lines {
