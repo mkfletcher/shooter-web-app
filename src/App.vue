@@ -5,7 +5,12 @@
                 <transition name="slide-fade" mode="out-in">
                     <router-view id="main-router-view"></router-view>
                 </transition>
-                <full-screen-loader></full-screen-loader>
+                <full-screen-loader 
+                    :width.sync="this.$store.state.fullScreenLoaderWidth"
+                    :height.sync="this.$store.state.fullScreenloaderHeight"
+                    :message.sync="this.$store.state.fullScreenLoaderMessage"
+                    :show.sync="this.$store.state.fullScreenLoaderShowing"
+                ></full-screen-loader>
             </div>
 	    </div>
     </div>

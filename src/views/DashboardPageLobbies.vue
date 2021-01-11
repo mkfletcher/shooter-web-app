@@ -83,7 +83,7 @@
             });
 
             // On lobby created
-            /*this.socket.on('created', (lobby) => {
+            this.socket.on('created', (lobby) => {
                 if (lobby.gameUser == window.localStorage.getItem('userId')) {
                     this.userLobbies.push(lobby);
                     this.userLobbies.sort((a, b) => {
@@ -95,7 +95,7 @@
                         return a.gameStartDatetime < b.gameStartDatetime ? -1 : 1;
                     });
                 }
-            });*/ 
+            });
 
             //this.socket.on('error', (err) => {
             //    console.log(err);

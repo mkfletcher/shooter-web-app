@@ -1,7 +1,7 @@
 <template>
-    <div class="account-page d-block h-100">
-       <h6>Account</h6>
-       <b-button @click="logout">Log Out</b-button>
+    <div class="account-page d-block h-100 p-5">
+       <h4>My Account</h4>
+       <b-button class="mt-3" variant="outline-danger" @click="logout">Log Out</b-button>
     </div>
 </template>
 <script>

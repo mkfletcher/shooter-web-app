@@ -6,17 +6,17 @@
                     <div class="login-card">
                         <b-tabs active-nav-item-class="login-card-tab-active" justified>
                             <b-tab title="LOG IN" active>
-                                <b-form @submit.stop.prevent="loginFormHandler" class="p-4">
+                                <b-form id="LoginForm" @submit.stop.prevent="loginFormHandler" class="p-4">
                                     <b-alert class="my-3" :show="invalidCredentialsMessage.length > 0" variant="danger">{{ invalidCredentialsMessage }}</b-alert>
                                     <b-form-group label="Display Name">
-                                        <b-form-input v-model="$v.loginForm.userDisplayName.$model" :state="validateFormFieldState('loginForm', 'userDisplayName')" type="text"></b-form-input>
-                                        <b-form-invalid-feedback>This is a required field.</b-form-invalid-feedback>
+                                        <b-form-input name="userDisplayName" v-model="$v.loginForm.userDisplayName.$model" :state="validateFormFieldState('loginForm', 'userDisplayName')" type="text"></b-form-input>
+                                        <b-form-invalid-feedback id="userDisplayNameFeedback">This is a required field.</b-form-invalid-feedback>
                                     </b-form-group>
                                     <b-form-group label="Password">
-                                        <b-form-input v-model="$v.loginForm.userPassword.$model" :state="validateFormFieldState('loginForm', 'userPassword')" type="password"></b-form-input>
-                                        <b-form-invalid-feedback>This is a required field.</b-form-invalid-feedback>
+                                        <b-form-input name="userPassword" v-model="$v.loginForm.userPassword.$model" :state="validateFormFieldState('loginForm', 'userPassword')" type="password"></b-form-input>
+                                        <b-form-invalid-feedback id="userPasswordFeedback">This is a required field.</b-form-invalid-feedback>
                                     </b-form-group>
-                                    <b-button class="mt-4" block variant="primary" type="submit">LOG IN</b-button>
+                                    <b-button class="loginSubmit mt-4" block variant="primary" type="submit">LOG IN</b-button>
                                 </b-form>
                             </b-tab>
                             <b-tab title="REGISTER">
@@ -58,6 +58,7 @@
      * @version 1.0
      */
 	export default {
+        name: 'login-page',
 
 		/**
 		 * Apply validation mixin
@@ -149,7 +150,7 @@
 				}).then((res) => {
                     window.localStorage.setItem('JWT', res.json.data.token);
                     window.localStorage.setItem('userId', res.json.data.user._id);
-					this.$router.push('/dashboard/');
+					this.$router.push('/dashboard/lobbies/');
 				}).catch((res) => {
 					if (res.statusCode === 400) {
 						this.invalidCredentialsMessage = res.json.errors[0].message;
@@ -186,7 +187,7 @@
 				}).then((res) => {
                     window.localStorage.setItem('JWT', res.json.data.token);
                     window.localStorage.setItem('userId', res.json.data._id);
-					this.$router.push('/dashboard/');
+					this.$router.push('/dashboard/lobbies');
 				}).catch((res) => {
 					if (res.statusCode === 400) {
 						this.invalidRegisterMessage = res.json.errors[0].message;

@@ -1,10 +1,10 @@
 <template>
 	<div class="full-screen-loader" :style="`pointer-events:${show ? 'initial' : 'none'}`">
         <transition name="slide-fade" mode="out-in">
-            <div class="full-screen-loader-inner"  v-if="show">
+            <div class="full-screen-loader-inner" :style="styles" v-if="show">
                 <div class="row h-75 justify-content-center">
                     <div class="col-10 align-self-center text-center">
-                        <p class="mb-3 text-white">{{ text }}</p>
+                        <p class="full-screen-loader-message mb-3 text-white">{{ message }}</p>
                         <b-spinner style="width: 3rem; height: 3rem;" variant="light" type="grow"></b-spinner>
                     </div>
                 </div>
@@ -17,14 +17,18 @@
 
 export default {
     name: 'full-screen-loader',
+    props: {
+        width: { type: Number, default: 720 },
+        height: { type: Number, default: 576 },
+        message: {type : String, default: "Loading..." },
+        show: {type : Boolean, default: false },
+    },
     computed: {
-        show () {
-            return this.$store.state.fullScreenLoaderShowing;
+        styles () {
+            return `width:${this.width}px;height:${this.height}px`;
         },
-        text () {
-            return this.$store.state.fullScreenLoaderText;
-        }
-    }
+        
+    },
 }
 </script>
 

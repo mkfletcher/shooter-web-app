@@ -1,16 +1,16 @@
 <template>
-    <div class="game-page">
+    <div class="game-page" tabindex="1"
+        @keydown.w="wPressed = true"
+        @keydown.d="dPressed = true"
+        @keydown.s="sPressed = true"
+        @keydown.a="aPressed = true"
+        @keyup.w="wPressed = false"
+        @keyup.d="dPressed = false"
+        @keyup.s="sPressed = false"
+        @keyup.a="aPressed = false">
         <div class="game-page-container">
             <div class="texture-alum"></div>
             <div id="gameCanvas" ref="gameCanvas" tabindex="1"
-                @keydown.w="wPressed = true"
-                @keydown.d="dPressed = true"
-                @keydown.s="sPressed = true"
-                @keydown.a="aPressed = true"
-                @keyup.w="wPressed = false"
-                @keyup.d="dPressed = false"
-                @keyup.s="sPressed = false"
-                @keyup.a="aPressed = false"
                 @mousedown.left="leftMouseButtonPressed = true"
                 @mouseup.left="leftMouseButtonPressed = false">
                 <div class="lines"></div>
@@ -20,7 +20,7 @@
                 <div class="buff-drops">
                     <div class="buff-drop" v-for="(playerBuffDrop) in playerBuffDrops" :key="playerBuffDrop.id" >{{ playerBuffDrop.text }}</div>
                 </div>
-                <div class="respawning" ref="respawning">
+                <div class="respawning" ref="respawning" v-if="!hasEnded">
                     <p>Unlucky, you were killed.</p>
                     <h3 class="mb-0">Prepare to Respawn...</h3>
                 </div>
@@ -29,41 +29,182 @@
                     <h3 class="mb-3">{{ timeUntilStart ? timeUntilStart + ' seconds' : '' }}</h3>
                 </div>
                 <div class="end-game" v-if="hasEnded">
-                    <p>Game finished.</p>
-                    <h3 class="mb-3">Thanks for playing</h3>
+                    <div class="row justify-content-center h-100">
+                        <div class="col-8 align-self-center">
+                            <div class="row no-gutters justify-content-center">
+                                <div class="col-12">
+                                    <p class="mb-2">Thanks for playing</p>
+                                    <h4 class="mb-4">The game has finished.</h4>
+                                </div>
+                            </div>
+                            <div class="row no-gutters justify-content-center scoreboard-row">
+                                <div class="col-5">
+                                    <p class="weight-600 text-center my-3">Name</p>
+                                </div>
+                                <div class="col-5">
+                                    <p class="weight-600 text-center my-3">Kills</p>
+                                </div>
+                            </div>
+                            <div class="row no-gutters justify-content-center scoreboard-row" v-for="item in scoreboard" :key="item.Name">
+                                <div class="col-5">
+                                    <p class="weight-400 text-center my-3">{{ item.Name }}</p>
+                                </div>
+                                <div class="col-5">
+                                    <p class="weight-400 text-center my-3">{{ item.Kills }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div id="HUD">
                 <div class="hud-game-info">
-                    <h5 class="weight-600 mt-2 mb-1" v-if="lobby">{{ lobby.gameMap.mapTitle }}</h5>
-                    <h6 class="weight-400 m-0" v-if="lobby">· {{ lobby.gameMode.gameModeTitle }} ·</h6>
-                    <hr>
-                    <h6 class="weight-400 mb-1" v-if="hasStarted">Time remaining: {{ timeUntilEnd }}s</h6>
-                    <hr>
-                    <h6 class="weight-400 mb-1">Health: {{ playerHealth }}</h6>
-                    <h6 class="weight-400 mb-1">Movement Speed: {{ playerSpeed }}</h6>
-                    <h6 class="weight-400 mb-1">Fire Rate: {{ playerFireRate }}</h6>
-                    <h6 class="weight-400 mb-1">Fire Damage: {{ playerFireDamage }}</h6>
-                    <h6 class="weight-400 mb-1">Kills: {{ playerKills }}</h6>
-                    <h6 class="weight-400 mb-1">Kill Streak: {{ playerKillStreak }}</h6>
+                    <div class="row no-gutters">
+                        <div class="col-12">
+                            <h5 class="weight-600 mt-3 mb-1" v-if="lobby">{{ lobby.gameMap.mapTitle }}</h5>
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-12">
+                            <h6 class="weight-400 m-0" v-if="lobby">· {{ lobby.gameMode.gameModeTitle }} ·</h6>
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-12">
+                            <hr class="my-3">
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-7 text-left">
+                            <h6 class="weight-400 m-0 pl-3" v-if="hasStarted">Time remaining:</h6>
+                        </div>
+                        <div class="col-5 text-right">
+                            <h6 class="weight-600 m-0 pr-3" v-if="hasStarted">{{ timeUntilEnd }}s</h6>
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-12">
+                            <hr class="my-3">
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-7 text-left">
+                            <h6 class="weight-400 m-0 pl-3">Health:</h6>
+                        </div>
+                        <div class="col-5 text-right">
+                            <h6 class="weight-600 m-0 pr-3">{{ playerHealth }}</h6>
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-7 text-left">
+                            <h6 class="weight-400 m-0 pl-3">Speed:</h6>
+                        </div>
+                        <div class="col-5 text-right">
+                            <h6 class="weight-600 m-0 pr-3">{{ playerSpeed }}</h6>
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-7 text-left">
+                            <h6 class="weight-400 m-0 pl-3">Fire Rate:</h6>
+                        </div>
+                        <div class="col-5 text-right">
+                            <h6 class="weight-600 m-0 pr-3">{{ 10 - playerFireRate }}</h6>
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-7 text-left">
+                            <h6 class="weight-400 m-0 pl-3">Damage:</h6>
+                        </div>
+                        <div class="col-5 text-right">
+                            <h6 class="weight-600 m-0 pr-3">{{ playerFireDamage }}</h6>
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-12">
+                            <hr class="my-3">
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-7 text-left">
+                            <h6 class="weight-400 m-0 pl-3">Kills:</h6>
+                        </div>
+                        <div class="col-5 text-right">
+                            <h6 class="weight-600 m-0 pr-3">{{ playerKills }}</h6>
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-7 text-left">
+                            <h6 class="weight-400 m-0 pl-3">Kill Streak:</h6>
+                        </div>
+                        <div class="col-5 text-right">
+                            <h6 class="weight-600 m-0 pr-3">{{ playerKillStreak }}</h6>
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-12">
+                            <hr class="mt-3 mb-0">
+                        </div>
+                    </div>
                 </div>
-                <hr class="mb-0">
                 <div class="hud-kill-history">
                     <div v-for="item in killHistory" :key="item.id">
                         <div class="row no-gutters">
-                            <div class="col-5 text-left  align-self-center pl-2">
+                            <div class="col-5 text-left  align-self-center pl-3">
                                 <p class="text-left m-0" :style="`color:${item.player1 == playerDisplayName ? '#212121' : '#ff4747'}`">{{ item.player1 }} ({{item.player1Ks}}ks)</p>
                             </div>
                             <div class="col-2 text-center align-self-center">
                                 <p class="w-100 text-center m-0"><img src="@/assets/bullet-2.png" width="24"/></p>
                             </div>
-                            <div class="col-5 text-right  align-self-center pr-2">
+                            <div class="col-5 text-right  align-self-center pr-3">
                                 <p class="text-right m-0" :style="`color:${item.player2 == playerDisplayName ? '#212121' : '#ff4747'}`">{{ item.player2 }} ({{item.player2Ks}}ks)</p>
                             </div>
                         </div>
                     </div>
                 </div>
-                <hr class="mt-0">
+                <div class="hud-menu">
+                    <div class="row no-gutters">
+                        <div class="col-12">
+                            <hr class="mt-0 mb-3">
+                        </div>
+                    </div>
+                    <div class="row no-gutters">
+                        <div class="col-12 text-left px-3">
+                            <b-button class="m-0" block variant="outline-primary" v-on:click="controlsWindowOpen = true">Controls</b-button>
+                        </div>
+                    </div>
+                    <div class="row no-gutters mt-3">
+                        <div class="col-12 text-left px-3">
+                            <b-button class="m-0" block variant="outline-danger" :to="`/dashboard/lobbies/`">Leave Game</b-button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="controls" v-if="controlsWindowOpen">
+                <div class="row h-100 justify-content-center">
+                    <div class="col-8 align-self-center">
+                        <div class="row no-gutters text-center">
+                            <div class="col-12">
+                                <h5 class="weight-600 m-0">Move Your Player:</h5>
+                            </div>
+                            <div class="col-12 mt-2">
+                                <h6 class="weight-400 m-0">Move your player using the W, A, S, D keys on your keyboard.</h6>
+                            </div>
+                        </div>
+                        <div class="row no-gutters text-centers mt-4">
+                            <div class="col-12">
+                                <h5 class="weight-600 m-0">Aim and shoot:</h5>
+                            </div>
+                            <div class="col-12 mt-2">
+                                <h6 class="weight-400 m-0">Aim by moving your mouse around the game window and shoot by holding down the left mouse button.</h6>
+                            </div>
+                        </div>
+                        <div class="row no-gutters text-centers mt-5">
+                            <div class="col-12">
+                                <b-button class="m-0" variant="outline-danger" v-on:click="controlsWindowOpen = false">Close Window</b-button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -101,6 +242,8 @@ export default {
             sPressed: false,
             aPressed: false,
             leftMouseButtonPressed: false,
+            controlsWindowOpen: false,
+            scoreboard: [],
             
             // World properties
             timer: null,
@@ -153,7 +296,11 @@ export default {
     mounted: function () {
 
         // Show loader
-        //this.$store.commit('showLoader', "Joining lobby...");
+        this.$store.commit('showLoader', {
+            message: "Joining lobby...",
+            width: 920,
+            height: 576,
+        });
 
         // Make sure game lobby still exists
         request({
@@ -173,7 +320,11 @@ export default {
             }
 
             // The lobby does exist, now load pixi.js and assets
-            //this.$store.commit('showLoader', "Loading assets...");
+            this.$store.commit('showLoader', {
+                message: "Loading assets...",
+                width: 920,
+                height: 576,
+            });
             
             // Create game
             this.game = new PIXI.Application({
@@ -197,7 +348,6 @@ export default {
             // Set canvas height to fit 16:9 aspect ratio
             this.resizeHandler();
 
-
             // Load assets
             this.game.loader.reset()
             .add('soldier', require('../assets/soldier.png'))
@@ -206,12 +356,15 @@ export default {
             .add('map', this.lobby.gameMap.mapTexturePath)
             .load(this.onAssetsReady);
 
-            
         }).catch((err) => {
-            alert('Sorry, this lobby no longer exists. We will redirect you to the dashboard');
-            //this.$store.commit('hideLoader');
-            this.$router.push('/dashboard/lobbies');
             console.log(err);
+            if (err.statusCode === 404) {
+                alert('Sorry, this lobby no longer exists. We will redirect you to the dashboard');
+            } else {
+                alert('Sorry, there was an error. We will redirect you to the dashboard');
+            }
+            this.$store.commit('hideLoader');
+            this.$router.push('/dashboard/lobbies');
         });
         
     },
@@ -228,11 +381,15 @@ export default {
          */
         onAssetsReady: function () {
 
-            var player = {};
-            var opponentPlayers = [];
+            // Connecting...
+            this.$store.commit('showLoader', {
+                message: "Connecting...",
+                width: 920,
+                height: 576,
+            });
 
             // Connect using web sockets
-            this.socket = io.connect(process.env.VUE_APP_API_BASE_URL, {
+            this.socket = io.connect(process.env.VUE_APP_API_BASE_URL + 'lobby', {
                 forceNew: true,
                 query: {
                     jwt: window.localStorage.getItem('JWT'),
@@ -243,26 +400,12 @@ export default {
             // User is successfully connected and ready to go
             this.socket.on('connect', () => {
 
-                // If lobby is full, disconnect
-                this.socket.on('lobbyFull', (data) => {
-                    lobbyFull
-                });
-
                 // Listen to ready event
                 this.socket.on('worldReady', (data) => {
 
-                    const textStyleWhite = new PIXI.TextStyle({ 
-                        fontSize: 14, 
-                        fill: "white", 
-                        strokeThickness: 2,
-                        letterSpacing: 1,
-                    });
-                    const textStyleRed = new PIXI.TextStyle({ 
-                        fontSize: 14, 
-                        fill: 0xff4747, 
-                        strokeThickness: 2,
-                        letterSpacing: 1,
-                    });
+                    // Create text styles
+                    const textStyleWhite = new PIXI.TextStyle({ fontSize: 14, fill: "white", strokeThickness: 2, letterSpacing: 1, });
+                    const textStyleRed = new PIXI.TextStyle({ fontSize: 14, fill: 0xff4747, strokeThickness: 2, letterSpacing: 1, });
 
                     // Create pixi world
                     const WORLD = new PIXI.Container();
@@ -473,16 +616,33 @@ export default {
                             });
                         }
 
+                        // If user is respawning...
                         if (userRespawning) {
                             this.$refs.respawning.style.visibility = 'visible';
                         } else {
                             this.$refs.respawning.style.visibility = 'hidden';
                         }
+                        
+                        // If game has now ended...
+                        // get scores for all players
+                        if (this.hasEnded) {
+                            if (this.scoreboard.length == 0) {
+                                for (var i = 0; i < data.players.length; i++) {
+                                    this.scoreboard.push({
+                                        "Name": data.players[i].displayName,
+                                        "Kills": data.players[i].kills,
+                                    });
+                                    this.scoreboard = this.scoreboard.sort((a, b) => a.kills < b.kills);
+                                }
+                                console.log(this.scoreboard);
+                            }
+                            return;
+                        }
 
                     });
 
                     // Hide loader
-                    //this.$store.commit('hideLoader');
+                    this.$store.commit('hideLoader');
                 });
                 
 
@@ -491,7 +651,11 @@ export default {
             // On connection error, probably unauthorized
             this.socket.on('connect_error', (err) => {
 
+                // Print message to console
                 console.log(err.message);
+
+                // Hide loader
+                this.$store.commit('hideLoader');
 
                 // JWT error
                 if (err.message == "Invalid token") {
@@ -510,6 +674,12 @@ export default {
                 // Full
                 else if (err.message == "Lobby Full") {
                     alert("Sorry this lobby is full. Please try again later. We will redirect you to the dashboard.");
+                    this.$router.push('/dashboard/lobbies');
+                }
+
+                // Already joined
+                else if (err.message == "Already Joined") {
+                    alert("You have already joined this lobby in another session. We will redirect you to the dashboard.");
                     this.$router.push('/dashboard/lobbies');
                 }
 
@@ -672,11 +842,11 @@ export default {
                 overflow: hidden;
                 font-size: 13px;
 
-                .hud-info {
+                .hud-game-info {
                     position: relative;
                     display: block;
                     width: 100%;
-                    height: 200px;
+                    height: 255px;
                     overflow: hidden;
                 }
 
@@ -690,8 +860,28 @@ export default {
 
                     p {
                         font-weight: 500;
+                        overflow: hidden;
+                        white-space: nowrap;
                     }
                 }
+
+                .hud-menu {
+                    position: relative;
+                    display: block;
+                    width: 100%;
+                    height: calc(100% - 120px - 255px);
+                }
+            }
+
+            #controls {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.9);
+                z-index: 999;
+                color: #e1e1e1;
             }
 
             .start-countdown {
@@ -714,12 +904,15 @@ export default {
                 left: 0;
                 width: 100%;
                 height: 100%;
-                padding-top: 220px;
                 z-index: 101;
                 pointer-events: none;
                 font-size: 13px;
-                color: #FFF;
+                color: #e1e1e1;
                 background-color:rgba(0,0,0,0.75);
+
+                .scoreboard-row {
+                    border-bottom: 1px solid #e1e1e1;
+                }
             }
 
             .respawning {

@@ -1,13 +1,13 @@
 <template>
     <div class="lobby-card">
-        <div class="img" :style="`background-image:url(${lobby.gameMap.mapTexturePath})`"></div>
+        <div class="lobby-img img" :style="`background-image:url(${lobby.gameMap.mapTexturePath})`"></div>
         <div class="content">
-            <h5 class="weight-600 mt-2 mb-1">{{ lobby.gameMap.mapTitle }}</h5>
-            <h6 class="weight-400 m-0">{{ lobby.gameMode.gameModeTitle }} · 0 / {{ lobby.gameMaxPlayers }} Players</h6>
-            <h6 class="weight-400 m-0" ref="timeAgo"></h6>
+            <h5 class="lobby-title weight-600 mt-2 mb-1">{{ lobby.gameMap.mapTitle }}</h5>
+            <h6 class="lobby-desc weight-400 m-0">{{ lobby.gameMode.gameModeTitle }} · 0 / {{ lobby.gameMaxPlayers }} Players</h6>
+            <h6 class="lobby-timeago weight-400 m-0" ref="timeAgo"></h6>
         </div>
         <div class="actions text-right">
-            <b-button variant="outline-danger mt-2" :to="`/dashboard/game/${lobby._id}`">JOIN</b-button>
+            <b-button class="lobby-join-btn" variant="outline-danger mt-2" :to="`/dashboard/game/${lobby._id}`">JOIN</b-button>
         </div>
     </div>
 </template>
@@ -36,12 +36,8 @@
         methods: {
             updateTimeAgo(str) {
                 this.$refs.timeAgo.textContent = str;
-            }
-        },
-        mounted: function () {
-
-            // Set a one minute timer
-            this.intervalTimer = setInterval(() => {
+            },
+            countdownTimer() {
 
                 // If lobby has started
                 if (moment().isAfter(this.lobby.gameStartDatetime)) {
@@ -61,8 +57,15 @@
                 else {
                     this.updateTimeAgo("Game starts in: " + moment(this.lobby.gameStartDatetime).fromNow(true));
                 }
+            },
+        },
+        mounted: function () {
 
-            });
+            // Set a one minute timer
+            this.intervalTimer = setInterval(() => {
+                this.countdownTimer();
+            }, 1000);
+            this.countdownTimer();
 
         },
         beforeDestroy() {
