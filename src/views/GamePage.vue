@@ -28,7 +28,7 @@
                     <p>Game starting in:</p>
                     <h3 class="mb-3">{{ timeUntilStart ? timeUntilStart + ' seconds' : '' }}</h3>
                 </div>
-                <div class="end-game" v-if="hasEnded">
+                <div class="end-game" ref="endGame" v-if="hasEnded">
                     <div class="row justify-content-center h-100">
                         <div class="col-8 align-self-center">
                             <div class="row no-gutters justify-content-center">
@@ -909,6 +909,7 @@ export default {
                 font-size: 13px;
                 color: #e1e1e1;
                 background-color:rgba(0,0,0,0.75);
+                visibility: visible!important;
 
                 .scoreboard-row {
                     border-bottom: 1px solid #e1e1e1;
