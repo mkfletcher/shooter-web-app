@@ -9,27 +9,27 @@
         </div>
         <div class="lobbies-page-content">
             <b-alert class="my-3" :show="invalidMessage.length > 0" variant="danger">{{ invalidMessage }}</b-alert>
-            <b-form @submit.stop.prevent="createGameFormHandler" class="p-4">
+            <b-form id="createLobbyForm" @submit.stop.prevent="createGameFormHandler" class="p-4">
                 <div class="row">
                     <div class="col-6">
                         <b-form-group label="Map Selection" description="Select which map in which this game should take place">
-                            <b-form-select v-model="$v.createGameForm.gameMap.$model" :options="gameMaps" :state="validateFormFieldState('createGameForm', 'gameMap')"></b-form-select>
+                            <b-form-select id="mapSelection" v-model="$v.createGameForm.gameMap.$model" :options="gameMaps" :state="validateFormFieldState('createGameForm', 'gameMap')"></b-form-select>
                         </b-form-group>
                     </div>
                     <div class="col-6">
                         <b-form-group label="Game Mode Selection" description="Select which game mode should be played on this map">
-                            <b-form-select v-model="$v.createGameForm.gameMode.$model" :options="gameModes" :state="validateFormFieldState('createGameForm', 'gameMode')"></b-form-select>
+                            <b-form-select id="gameModeSelection" v-model="$v.createGameForm.gameMode.$model" :options="gameModes" :state="validateFormFieldState('createGameForm', 'gameMode')"></b-form-select>
                         </b-form-group>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-6">
-                        <b-form-group label="Start Date" description="The game will start on this date. You must select a date in the future.">
-                            <b-form-datepicker v-model="$v.createGameForm.gameStartDate.$model" :min="minDate" :state="validateFormFieldState('createGameForm', 'gameStartDate')" :date-format-options="{ year: 'numeric', month: 'numeric', day: 'numeric' }"></b-form-datepicker>
+                        <b-form-group id="startDate" label="Start Date" description="The game will start on this date. You must select a date in the future.">
+                            <b-form-datepicker  v-model="$v.createGameForm.gameStartDate.$model" :min="minDate" :state="validateFormFieldState('createGameForm', 'gameStartDate')" :date-format-options="{ year: 'numeric', month: 'numeric', day: 'numeric' }"></b-form-datepicker>
                         </b-form-group>
                     </div>
                     <div class="col-6">
-                      <b-form-group label="Start Time" description="The game will start at this time. You must select a time in the future.">
+                      <b-form-group id="startTime" label="Start Time" description="The game will start at this time. You must select a time in the future.">
                             <b-form-timepicker v-model="$v.createGameForm.gameStartTime.$model" :min="minDate" :state="validateFormFieldState('createGameForm', 'gameStartTime')"></b-form-timepicker>
                         </b-form-group>
                     </div>
@@ -46,7 +46,7 @@
                         </b-form-group>
                     </div>
                 </div>
-                <b-button class="mt-4" block variant="primary" type="submit">Create Lobby</b-button>
+                <b-button id="submitButton" class="mt-4" block variant="primary" type="submit">Create Lobby</b-button>
             </b-form>
             <b-alert class="my-3" :show="invalidMessage.length > 0" variant="danger">{{ invalidMessage }}</b-alert>
         </div>

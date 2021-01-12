@@ -23,3 +23,18 @@
 //
 // -- This is will overwrite an existing command --
 // Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
+Cypress.Commands.add('login', () => { 
+    cy.request({
+      method: 'POST',
+      url: 'https://shooter-api.herokuapp.com/users/login',
+      body: {
+        "userDisplayName": "Matt",
+        "userPassword": "test12345"
+      }
+    }).its('body').then((body) => {
+        console.log(body);
+        window.localStorage.setItem('JWT', body.data.token);
+        window.localStorage.setItem('userId', body.data._id);
+    })
+  
+})

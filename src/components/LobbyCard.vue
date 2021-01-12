@@ -3,7 +3,7 @@
         <div class="lobby-img img" :style="`background-image:url(${lobby.gameMap.mapTexturePath})`"></div>
         <div class="content">
             <h5 class="lobby-title weight-600 mt-2 mb-1">{{ lobby.gameMap.mapTitle }}</h5>
-            <h6 class="lobby-desc weight-400 m-0">{{ lobby.gameMode.gameModeTitle }} · 0 / {{ lobby.gameMaxPlayers }} Players</h6>
+            <h6 class="lobby-desc weight-400 m-0">{{ lobby.gameMode.gameModeTitle }} · {{ lobby.gameMaxPlayers }} Max Players</h6>
             <h6 class="lobby-timeago weight-400 m-0" ref="timeAgo"></h6>
         </div>
         <div class="actions text-right">

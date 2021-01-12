@@ -7,13 +7,15 @@
     "build": "vue-cli-service build --mode production",
     "test:unit": "vue-cli-service test:unit",
     "test:e2e": "vue-cli-service test:e2e --headless",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "deploy": "vue-cli-service test:unit && vue-cli-service test:e2e --headless && vue-cli-service build --mode production && git add *"
   },
   "dependencies": {
     "axios": "^0.21.0",
     "base64-arraybuffer": "^0.2.0",
     "bootstrap": "^4.5.3",
     "bootstrap-vue": "^2.19.0",
+    "chai": "^4.2.0",
     "core-js": "^3.6.5",
     "mainloop.js": "^1.0.4",
     "moment": "^2.29.1",

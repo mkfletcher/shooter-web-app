@@ -24,7 +24,7 @@ describe('LobbyCard.vue', () => {
 
     it('Displays lobby description correctly.', () => {
         const component = createComponent({ lobby: lobby });
-        expect(component.find('.lobby-desc').text()).toMatch(`${lobby.gameMode.gameModeTitle} · 0 / ${lobby.gameMaxPlayers} Players`);
+        expect(component.find('.lobby-desc').text()).toMatch(`${lobby.gameMode.gameModeTitle} · ${lobby.gameMaxPlayers} Max Players`);
     });
 
     it('Displays lobby map image correctly.', () => {

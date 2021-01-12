@@ -23,16 +23,16 @@
                                 <b-form @submit.stop.prevent="registerFormHandler" class="p-4">
                                     <b-alert class="my-3" :show="invalidRegisterMessage.length > 0" variant="danger">{{ invalidRegisterMessage }}</b-alert>
                                     <b-form-group label="Display Name">
-                                        <b-form-input v-model="$v.registerForm.userDisplayName.$model" :state="validateFormFieldState('registerForm', 'userDisplayName')" type="text"></b-form-input>
-                                        <b-form-invalid-feedback>This is a required field.</b-form-invalid-feedback>
+                                        <b-form-input name="registerUserDisplayName" v-model="$v.registerForm.userDisplayName.$model" :state="validateFormFieldState('registerForm', 'userDisplayName')" type="text"></b-form-input>
+                                        <b-form-invalid-feedback id="registerUserDisplayNameFeedback">This is a required field.</b-form-invalid-feedback>
                                     </b-form-group>
                                     <b-form-group label="Password">
-                                        <b-form-input v-model="$v.registerForm.userPassword.$model" :state="validateFormFieldState('registerForm', 'userPassword')" type="password"></b-form-input>
-                                        <b-form-invalid-feedback>This is a required field and must be at least 6 characters long.</b-form-invalid-feedback>
+                                        <b-form-input name="registerUserPassword" v-model="$v.registerForm.userPassword.$model" :state="validateFormFieldState('registerForm', 'userPassword')" type="password"></b-form-input>
+                                        <b-form-invalid-feedback id="registerUserPasswordFeedback">This is a required field and must be at least 6 characters long.</b-form-invalid-feedback>
                                     </b-form-group>
                                     <b-form-group label="Confirm Password">
-                                        <b-form-input v-model="$v.registerForm.userPasswordConfirm.$model" :state="validateFormFieldState('registerForm', 'userPasswordConfirm')" type="password"></b-form-input>
-                                        <b-form-invalid-feedback>Passwords must match.</b-form-invalid-feedback>
+                                        <b-form-input name="registerUserConfirmPassword" v-model="$v.registerForm.userPasswordConfirm.$model" :state="validateFormFieldState('registerForm', 'userPasswordConfirm')" type="password"></b-form-input>
+                                        <b-form-invalid-feedback id="registerUserConfirmPasswordFeedback">Passwords must match.</b-form-invalid-feedback>
                                     </b-form-group>
                                     <b-button class="mt-4" block variant="primary" type="submit">Register</b-button>
                                 </b-form>
