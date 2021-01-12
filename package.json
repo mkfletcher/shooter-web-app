@@ -8,9 +8,9 @@
     "test:unit": "vue-cli-service test:unit",
     "test:e2e": "vue-cli-service test:e2e --headless",
     "lint": "vue-cli-service lint",
-    "deploy": "vue-cli-service test:unit && vue-cli-service test:e2e --headless && vue-cli-service build --mode production && git add * && git commit -m \"'--msg \"' && git push heroku master",
-    "deploy2": "git add * && git commit -m"
-  },
+    "deploy:prepare": "vue-cli-service test:unit && vue-cli-service test:e2e --headless && vue-cli-service build --mode production",
+    "deploy:production": "git add * && git commit -m --msg && git push heroku master"
+},
   "dependencies": {
     "axios": "^0.21.0",
     "base64-arraybuffer": "^0.2.0",
