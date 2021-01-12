@@ -15,6 +15,7 @@
 
 <script>
 
+
 export default {
     name: 'full-screen-loader',
     props: {
