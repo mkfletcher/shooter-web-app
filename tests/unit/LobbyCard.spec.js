@@ -15,6 +15,7 @@ const createComponent = (props = {}) => {
     });
 }
 
+
 describe('LobbyCard.vue', () => {
 
     it('Displays lobby map title correctly.', () => {
