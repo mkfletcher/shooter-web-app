@@ -13,6 +13,7 @@ const createComponent = (props = {}) => {
     });
 }
 
+
 describe('FullscreenLoader.vue', () => {
 
     it('Do not render inner content when show prop is false.', () => {
