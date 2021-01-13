@@ -9,7 +9,7 @@
     "test:e2e": "vue-cli-service test:e2e --headless",
     "lint": "vue-cli-service lint",
     "deploy:prepare": "vue-cli-service test:unit && vue-cli-service test:e2e --headless && vue-cli-service build --mode production",
-    "deploy:production": "git add * && git commit -m --msg && git push heroku master"
+    "deploy:production": "git add * && git commit -m ${msg} && git push heroku master"
 },
   "dependencies": {
     "axios": "^0.21.0",

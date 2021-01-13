@@ -1,0 +1,26 @@
+language: node_js
+
+node_js:
+  - "14.13.0"
+
+jobs:
+  include:
+    - stage: install
+      script: npm run install
+
+    - stage: build
+      script: npm run build
+
+    - stage: build
+      script: npm run test:unit
+
+    - stage: build
+      script: npm run test:e2e
+
+    - stage: deploy
+      deploy:
+        provider: heroku
+        api_key: "42a8c48e-f0ae-402f-9d09-4e7373bd7675"
+        on:
+          all_branches: true
+        app: shooter-web-app
