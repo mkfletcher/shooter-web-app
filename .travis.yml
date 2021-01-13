@@ -6,7 +6,7 @@ node_js:
 jobs:
   include:
     - stage: install
-      script: npm run install
+      script: npm install
 
     - stage: build
       script: npm run build
