@@ -13,19 +13,15 @@ describe('Create Lobby Page Test', () => {
     // Test entering log in details
     context("Create a lobby", () => {
 
-        it("should default to todays date", () => {
+        /*it("should default to todays date", () => {
             cy.get('#startDate label').should('have.text', moment().format('DD/MM/YYYY').toString());
         });
 
         it("should default to todays current time", () => {
             cy.wait(500);
             cy.get('#startTime label').should('have.text', moment().format('HH:mm').toString());
-        });
+        });*/
 
-        it("should default to todays current time", () => {
-            cy.wait(500);
-            cy.get('#startTime label').should('have.text', moment().format('HH:mm').toString());
-        });
 
         it("should not allow submission if map is not selected", () => {
             cy.wait(500);
