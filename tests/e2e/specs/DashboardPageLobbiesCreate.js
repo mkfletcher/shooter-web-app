@@ -18,19 +18,23 @@ describe('Create Lobby Page Test', () => {
         });
 
         it("should default to todays current time", () => {
+            cy.wait(500);
             cy.get('#startTime label').should('have.text', moment().format('HH:mm').toString());
         });
 
         it("should default to todays current time", () => {
+            cy.wait(500);
             cy.get('#startTime label').should('have.text', moment().format('HH:mm').toString());
         });
 
         it("should not allow submission if map is not selected", () => {
+            cy.wait(500);
             cy.get('#createLobbyForm').submit();
             cy.get('#mapSelection').should('have.class', 'is-invalid');
         });
         
         it("should not allow submission if gamemode is not selected", () => {
+            cy.wait(500);
             cy.get('#createLobbyForm').submit();
             cy.get('#gameModeSelection').should('have.class', 'is-invalid');
         });
